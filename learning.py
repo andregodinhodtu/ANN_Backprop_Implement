@@ -5,7 +5,10 @@
 class ANN():
     
     ACTIVATION_FUNCTIONS = {
-        "relu": lambda x: max(0, x)
+        "relu": {
+            "func": lambda x: max(0, x),
+            "deriv": lambda x: 1 if x > 0 else 0
+        }
     }
     
     def __init__(self, n_layers, n_neurons_each_layer, activation_function):
@@ -31,7 +34,7 @@ class ANN():
         # Initial settings obligatory
         self.n_layers =  n_layers
         self.n_neurons_each_layer =  n_neurons_each_layer
-        self.activation_function = self.ACTIVATION_FUNCTIONS[activation_function]
+        self.activation_function = self.ACTIVATION_FUNCTIONS[activation_function]["func"]
         
         # Parameters of the Network to build
         self.weights = []
@@ -173,13 +176,17 @@ class ANN():
             working_vector = a
 
         return working_vector  # output of last layer
-                
         
+    def backpropagation(self,step):
+        """Apply Chain Rule"""
+        pass
+                
+    
         
 
 
 test_n_layers = 3
-test_n_neurons_each_layer = [4,3,1]
+test_n_neurons_each_layer = [4,2,1]
 test_nn = ANN(test_n_layers,
              test_n_neurons_each_layer,
              "relu")
