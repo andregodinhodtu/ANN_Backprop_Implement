@@ -1,20 +1,28 @@
+import numpy as np
 
 # INPUT PREPARATION by subsets
 
 def parse_input(filename, start=None, end=None):
 
-    """ Parses file into a list of values and list of their labels. 
+    """ Parses file into a NumPy arrays. 
     
-    usage: parse_input(filename, 0, 100)
-        returns input_list and label_list with length 100, from lines 0 to 99 """
+    Usage: parse_input(filename, 0, 100)
+        returns input_list and label_list with length 100, from lines 0 to 99 
+        
+    Returns: X = (n_samples, 27) float array of input values
+            y = (1, n_samples) int array of labels"""
     
     input_list = []
     label_list = []
+
     for value, label in iterate_input(filename=filename, start=start, end=end):
         input_list.append(value)
         label_list.append(label)
 
-    return input_list, label_list
+    X = np.array(input_list, dtype=np.float32)
+    y = np.array(label_list, dtype=np.int32)
+
+    return X, y
 
 
 
@@ -53,11 +61,11 @@ def iterate_input(filename, start=None, end=None):
 def parse_line(line):
 
     """Takes a line from a file and parses it into an value and label.
-    Assumes structure: 27 value values and 1 label value"""
+    Assumes structure: 27 feature values and 1 label value"""
 
     line_parts = line.strip().split()
-    if line_parts is None or len(line) != 28:
-        raise ValueError("Check input file - line must have 27 input values and 1 label.")
+    if line_parts is None or len(line) != 28: # 27 features + 1 label
+        raise ValueError(f"Check input file - expected 28, got {len(line_parts)}")
     
     
     value = [float(x) for x in line_parts[:-1]]
