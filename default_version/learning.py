@@ -130,7 +130,7 @@ class ANN():
         for i, n_neurons in zip(range(self.n_layers), self.n_neurons_each_layer):
             print(f" - In the {i} layer with {n_neurons} neurons")
             
-        print("\nBuild matrix and weights:")
+        print("\nBuild matrix and weights:\n")
         
         # Build the structure of the ANN    
         for i in range(self.n_layers - 1):
@@ -155,13 +155,14 @@ class ANN():
 
         # Convert input to column vector
         working_vector = self._tranpose_matrix(input_vector)
+        
         self.a_s = [working_vector]  # store input as activation
         self.z_s = []                # empty list for pre-activations
 
         # Forward pass through each layer
         for i in range(self.n_layers - 1):
             W = self.weights[i]
-            b = self.bias[i]
+            b = self.bias[i]    
 
             # z = W @ a + b
             z = self._product(W, working_vector)
@@ -185,13 +186,13 @@ class ANN():
         
 
 
-test_n_layers = 3
-test_n_neurons_each_layer = [4,2,1]
+test_n_layers = 6
+test_n_neurons_each_layer = [4,2,5,3,5,1]
 test_nn = ANN(test_n_layers,
              test_n_neurons_each_layer,
              "relu")
              
-test_prediction = [[0,0,0,0]]
+test_prediction = [[2,-5,3,10]]
 
 test_run = test_nn.prediction(test_prediction)  
 print(test_run)      
