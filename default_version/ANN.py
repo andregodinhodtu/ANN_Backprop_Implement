@@ -1,13 +1,16 @@
 ##################################
 # Build Aritificial Neural Network
 ##################################
+import random
+
+random.seed(10) 
 
 class ANN():
     
     ACTIVATION_FUNCTIONS = {
         "relu": {
             "func": lambda x: max(0, x),
-            "deriv": lambda x: 1 if x > 0 else 0
+            "deriv": lambda x: 1 if x >= 0 else 0
         }
     }
     LOSS_FUNCTIONS = {
@@ -71,6 +74,16 @@ class ANN():
                 for val in row
             ))
         pass
+        
+    def _print_weight_and_bias_matrices(self, weight_matrices, bias_matrices):
+        """Print weight and bias matrices for each layer"""
+    
+        for i, (w, b) in enumerate(zip(weight_matrices, bias_matrices)):
+            print(f"Weights between layer {i} and layer {i+1}:")
+            self._print_matrix(w)
+        
+            print(f"Biases for layer {i+1}:")
+            self._print_matrix(b)
         
     def _tranpose_matrix(self,matrix):
         """ Helper function to transpose a matrix"""
@@ -150,6 +163,14 @@ class ANN():
     
         return result
         
+    def _copy_structure(self, matrices):
+        """Deep copy a list of matrices (list of list of lists)"""
+    
+        return [
+            [row[:] for row in matrix]   # copy each row
+            for matrix in matrices       # for each matrix
+        ]
+        
         
     def _add_bias(self, z, b):
         """
@@ -177,19 +198,19 @@ class ANN():
         for i, n_neurons in zip(range(self.n_layers), self.n_neurons_each_layer):
             print(f" - In the {i} layer with {n_neurons} neurons")
             
-        print("\nBuild matrix and weights:\n")
+        print(f"\n" + "#"*30 + " Build ANN " + "#"*30 + "\n")
         
         # Build the structure of the ANN    
         for i in range(self.n_layers - 1):
-            print("-" * 40)
             # Weight matrix: next_layer_neurons x current_layer_neurons
-            weight_matrix = [[1 for x in range(self.n_neurons_each_layer[i])] for j in range(self.n_neurons_each_layer[i+1])]
+            weight_matrix = [
+                [random.uniform(-0.5, 0.5) for _ in range(self.n_neurons_each_layer[i])]
+                for _ in range(self.n_neurons_each_layer[i+1])
+            ]
             self.weights.append(weight_matrix)
-            print(f"Weights in {i}")
-            print(self.weights)
 
-            # Bias vector: next_layer_neurons x 1
-            bias_vector = [[1] for _ in range(self.n_neurons_each_layer[i+1])]
+            # Bias vector: next_layer_neurons x 1, small positive to avoid dead ReLU
+            bias_vector = [[0.01] for _ in range(self.n_neurons_each_layer[i+1])]
             self.bias.append(bias_vector)
 
             print(f"Weight matrix between layer {i} and layer {i+1}:")
@@ -221,6 +242,12 @@ class ANN():
             # Apply activation
             a = self._apply_activation(z)
             self.a_s.append(a)   # store activation
+            
+            """if i == self.n_layers - 2:
+            a = z  # linear output
+            else:
+            a = self._apply_activation(z)"""
+            # Activation in last layer maybe it´s not needed
 
             # Set input for next layer
             working_vector = a
@@ -233,8 +260,6 @@ class ANN():
         Creates List structure that stores the derivatives of the Loss in function
         of the weights and the biasas 
         """
-            
-        print("\nBuilding Backprop matrix for Derivative of Loss on weights and Bias:\n")
         
         # Build the structure of the ANN    
         for i in range(self.n_layers - 1):
@@ -245,10 +270,17 @@ class ANN():
             bias_vector = [[None] for x in range(self.n_neurons_each_layer[i+1])]
             self.loss_deriv_of_bias.append(bias_vector)
 
-            print(f"Weight matrix of Loss derivative between layer {i} and layer {i+1}:")
+            """print(f"Weight matrix of Loss derivative between layer {i} and layer {i+1}:")
             self._print_matrix(weight_matrix)
             print(f"Bias Matrix of Loss derivative between layer {i} and layer {i+1}:")
-            self._print_matrix(bias_vector)
+            self._print_matrix(bias_vector)"""
+            
+    def _fill_with_none(self, matrix):
+        """Modify the given matrix in-place, replacing all values with None"""
+    
+        for i in range(len(matrix)):
+            for j in range(len(matrix[i])):
+                matrix[i][j] = None
     
     
     def _backpropagation(self, y):
@@ -259,6 +291,7 @@ class ANN():
         # First we will compute all the delta
         
         working_y = y
+        self.delta_s = [[] for _ in range(self.n_layers)]
     
         for layer in range(self.n_layers-1,-1,-1):
 
@@ -310,66 +343,79 @@ class ANN():
                     self.loss_deriv_of_bias[layer][next_layer_neuron][0] = self.delta_s[layer+1][next_layer_neuron]
                     
         
-    def backprop_one_training_example(self, input_vector, y):
+    def backprop_one_training_example(self, input_vector, y, step = 1000, learning_rate = 0.001):
         """Apply Chain Rule
            We want to calculate the derivatives for the Lost in
            function of the Weights and the biases"""
         
-        network_response = self.prediction(input_vector)
         working_y = self._tranpose_matrix(y)
-        print(f"Working y: {working_y}")
-        # loss = self.LOSS_FUNCTION[loss_function]["func"](network_response,working_y )
-        # derivative = self.LOSS_FUNCTION[loss_function]["deriv"](network_response,working_y)
         
-        print(f"\n" + "#"*25 + " Init Backprop Matrixes " + "#"*25 + "\n")
+        # print(f"\n" + "#"*25 + " Init Backprop Matrixes " + "#"*25 + "\n")
         self._build_backprop_matrix()
         
+        network_response = self.prediction(input_vector)
+        print(f"\n" + "#"*28 + " 1º Network Response " + "#"*28 + "\n")
+        self._print_matrix(network_response)
+        print(f"Error for this cycle is {self.loss_function(working_y, network_response):.4f} \n")
         
-        print(f"\n" + "#"*30 + " First cycle " + "#"*30 + "\n")
+        for i in range(step):
+            
+            print(f"-"*20 + f" Backpropagation cycle number {i} " + "-"*20)
+            
+            # Start by performing backpropagation in the current weights and activations
+            self._backpropagation(working_y)
         
-        self._backpropagation(working_y)
-        for i in range(self.n_layers - 1):
+            print(f"\n" + "#"*28 + " 1º Cycle Backprop " + "#"*28)
+            print(f"#"*7 + " Values straight out of backprop, before any product to lr  " + "#"*7 + "\n")
+        
+            self._print_weight_and_bias_matrices(self.loss_deriv_of_weights,self.loss_deriv_of_bias)
+            
+            # Change weights 
+        
+            adjusted_weight = []
+            adjusted_bias = []
+        
+            for matrix in self.loss_deriv_of_weights:
+                adjusted_weight.append(self._product_by_scalar(learning_rate, matrix))
+            
+            for bias in self.loss_deriv_of_bias:
+                adjusted_bias.append(self._product_by_scalar(learning_rate, bias))
+            
+            
+            result_weight_matrix = []
+            result_bias_matrix = []
+            for i in range(self.n_layers -1):
+                result_weight_matrix.append(self._subtract_matrices(self.weights[i],adjusted_weight[i]))
+                result_bias_matrix.append(self._subtract_matrices(self.bias[i],adjusted_bias[i]))
+            
+            print(f"\n" + "#"*30 + " New parameters " + "#"*30 + "\n")
+            
+            self._print_weight_and_bias_matrices(result_weight_matrix,result_bias_matrix)
+            self.weights = self._copy_structure(result_weight_matrix)
+            self.bias = self._copy_structure(result_bias_matrix)
+            
 
-            print(f"Weight matrix of Loss derivative between layer {i} and layer {i+1}:")
-            self._print_matrix(self.loss_deriv_of_weights[i])
-            print(f"Bias Matrix of Loss derivative between layer {i} and layer {i+1}:")
-            self._print_matrix(self.loss_deriv_of_bias[i])
-            
-        # Change weights 
-        
-        learning_rate = 0.01
-        adjusted_weight = []
-        adjusted_bias = []
-        
-        for matrix in self.loss_deriv_of_weights:
-            adjusted_weight.append(self._product_by_scalar(learning_rate, matrix))
-            
-        for bias in self.loss_deriv_of_bias:
-            adjusted_bias.append(self._product_by_scalar(learning_rate, bias))
-            
-            
-        result_weight_matrix = []
-        result_bias_matrix = []
-        for i in range(self.n_layers -1):
-            result_weight_matrix.append(self._subtract_matrices(self.weights[i],adjusted_weight[i]))
-            result_bias_matrix.append(self._subtract_matrices(self.bias[i],adjusted_bias[i]))
-            
-        
-        print(f"\n" + "#"*30 + " New parameters " + "#"*30 + "\n")
-        
-        for i in range(self.n_layers - 1):
+            # Rest matrixes
+            for matrix in self.loss_deriv_of_weights:
+                self._fill_with_none(matrix)
 
-            print(f"Weight matrix of Loss derivative between layer {i} and layer {i+1}:")
-            self._print_matrix(result_weight_matrix[i])
-            print(f"Bias Matrix of Loss derivative between layer {i} and layer {i+1}:")
-            self._print_matrix(result_bias_matrix[i])
+            for matrix in self.loss_deriv_of_bias:
+                self._fill_with_none(matrix)
+                
             
-        
-        
-        
+            network_response = self.prediction(input_vector)
+            print(f"\n" + "#"*28 + " 2º Network Response " + "#"*28 + "\n")
+            self._print_matrix(network_response)
+            print(f"Error for this cycle is {self.loss_function(working_y, network_response)}")
+    
+    
+    
+print(f"\n" + "#"*74)       
+print(f"#"*30 + " Start Script " + "#"*30)        
+print(f"#"*74 + "\n")   
 
-test_n_layers = 3
-test_n_neurons_each_layer = [3,2,3]
+test_n_layers = 4
+test_n_neurons_each_layer = [3,2,3,3]
 test_nn = ANN(test_n_layers,
              test_n_neurons_each_layer,
              "relu",
