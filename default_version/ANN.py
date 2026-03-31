@@ -427,3 +427,8 @@ test_prediction = [[1,1,2]]
 working_y = [[1,2,3]]
 
 test_nn.backprop_one_training_example(test_prediction, working_y)
+
+n_layers = 2
+for layer in range(n_layers-1,-1,-1):
+    
+    print(layer)
