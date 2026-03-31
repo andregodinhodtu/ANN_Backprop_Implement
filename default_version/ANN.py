@@ -3,7 +3,7 @@
 ##################################
 import random
 
-random.seed(10) 
+random.seed(0) 
 
 class ANN():
     
@@ -414,8 +414,8 @@ print(f"\n" + "#"*74)
 print(f"#"*30 + " Start Script " + "#"*30)        
 print(f"#"*74 + "\n")   
 
-test_n_layers = 4
-test_n_neurons_each_layer = [3,2,3,3]
+test_n_layers = 10
+test_n_neurons_each_layer = [3,2,3,3,5,6,7,8,3,3]
 test_nn = ANN(test_n_layers,
              test_n_neurons_each_layer,
              "relu",
@@ -423,6 +423,5 @@ test_nn = ANN(test_n_layers,
              
 test_prediction = [[1,1,2]]
 working_y = [[1,2,3]]
-
 
 test_nn.backprop_one_training_example(test_prediction, working_y)
