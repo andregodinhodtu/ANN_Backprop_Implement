@@ -8,6 +8,7 @@ random.seed(0)
 class ANN():
     
     ACTIVATION_FUNCTIONS = {
+        # *** change from relu to sigmoid
         "relu": {
             "func": lambda x: max(0, x),
             "deriv": lambda x: 1 if x >= 0 else 0
@@ -58,7 +59,8 @@ class ANN():
         # Results in each step
         self.z_s = []
         self.a_s = []
-        
+  
+
         # Backpropagation
         self.loss_deriv_of_weights = []
         self.loss_deriv_of_bias = []
@@ -109,12 +111,12 @@ class ANN():
         """ Matrix Multiplication of matrixes stored as lists of lists"""
     
         # Number of rows
-        n_row_a = len(matrix_a)
+        n_row_a = len(matrix_a) #*dont need this
         n_row_b = len(matrix_b)
     
         # Number of cols
         n_col_a = len(matrix_a[0])
-        n_col_b = len(matrix_b[0])
+        n_col_b = len(matrix_b[0]) #*dont need this
     
         # Check if number of cols in A is the same of rows in B to perform product
         if n_col_a != n_row_b:
@@ -384,9 +386,9 @@ class ANN():
             
             result_weight_matrix = []
             result_bias_matrix = []
-            for i in range(self.n_layers -1):
-                result_weight_matrix.append(self._subtract_matrices(self.weights[i],adjusted_weight[i]))
-                result_bias_matrix.append(self._subtract_matrices(self.bias[i],adjusted_bias[i]))
+            for j in range(self.n_layers -1):
+                result_weight_matrix.append(self._subtract_matrices(self.weights[j],adjusted_weight[j]))
+                result_bias_matrix.append(self._subtract_matrices(self.bias[j],adjusted_bias[j]))
             
             print(f"\n" + "#"*30 + " New parameters " + "#"*30 + "\n")
             
@@ -395,7 +397,7 @@ class ANN():
             self.bias = self._copy_structure(result_bias_matrix)
             
 
-            # Rest matrixes
+            # Reset matrixes
             for matrix in self.loss_deriv_of_weights:
                 self._fill_with_none(matrix)
 
@@ -414,8 +416,8 @@ print(f"\n" + "#"*74)
 print(f"#"*30 + " Start Script " + "#"*30)        
 print(f"#"*74 + "\n")   
 
-test_n_layers = 10
-test_n_neurons_each_layer = [3,2,3,3,5,6,7,8,3,3]
+test_n_layers = 3
+test_n_neurons_each_layer = [3,5,3]
 test_nn = ANN(test_n_layers,
              test_n_neurons_each_layer,
              "relu",
