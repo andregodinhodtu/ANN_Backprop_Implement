@@ -1,5 +1,5 @@
 # data
-./data/
+data/
 
 # Python bytecode/cache
 __pycache__/
