@@ -59,7 +59,6 @@ def parse_line(line):
     if line_parts is None or len(line_parts) != 28:
         raise ValueError("Check input file - line must have 27 input values and 1 label.")
     
-    
     value = [float(x) for x in line_parts[:-1]]
     label = [int(line_parts[-1])]
 
