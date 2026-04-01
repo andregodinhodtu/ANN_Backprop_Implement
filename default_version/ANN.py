@@ -419,24 +419,20 @@ class ANN():
             print(f"Error for this cycle is {self.loss_function(working_y, network_response)}")
     
     
+if __name__ == "__main__":
     
-print(f"\n" + "#"*74)       
-print(f"#"*30 + " Start Script " + "#"*30)        
-print(f"#"*74 + "\n")   
+    print(f"\n" + "#"*74)       
+    print(f"#"*30 + " Start Script " + "#"*30)        
+    print(f"#"*74 + "\n")   
 
-test_n_layers = 3
-test_n_neurons_each_layer = [3,5,3]
-test_nn = ANN(test_n_layers,
+    test_n_layers = 3
+    test_n_neurons_each_layer = [3,5,3]
+    test_nn = ANN(test_n_layers,
              test_n_neurons_each_layer,
              "relu",
              "MSE")
              
-test_prediction = [[1,1,2]]
-working_y = [[1,2,3]]
+    test_prediction = [[1,1,2]]
+    working_y = [[1,2,3]]
 
-test_nn.backprop_one_training_example(test_prediction, working_y)
-
-n_layers = 2
-for layer in range(n_layers-1,-1,-1):
-    
-    print(layer)
+    test_nn.backprop_one_training_example(test_prediction, working_y)
