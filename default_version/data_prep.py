@@ -56,7 +56,7 @@ def parse_line(line):
     Assumes structure: 27 value values and 1 label value"""
 
     line_parts = line.strip().split()
-    if line_parts is None or len(line) != 28:
+    if line_parts is None or len(line_parts) != 28:
         raise ValueError("Check input file - line must have 27 input values and 1 label.")
     
     

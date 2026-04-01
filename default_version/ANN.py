@@ -3,7 +3,7 @@
 ##################################
 import random
 
-random.seed(0) 
+random.seed(42) 
 
 class ANN():
     
@@ -14,13 +14,14 @@ class ANN():
         "relu": {
             "func": lambda x: max(0, x),
             "deriv": lambda x: 1 if x >= 0 else 0
-        }
+        },
         "sigmoid": {
             "func": lambda x: 1 / (1 + ANN.EULER_NUMBER ** (-x)),
             # deriv can be optimized because digmoid is being computed twice
-            "deriv": lambda x: ((1 / (1 + YourClass.EULER_NUMBER ** (-x))) *
-                           (1 - (1 / (1 + YourClass.EULER_NUMBER ** (-x))))
+            "deriv": lambda x: (1 / (1 + ANN.EULER_NUMBER ** (-x))) *
+                           (1 - (1 / (1 + ANN.EULER_NUMBER ** (-x))))
         }
+    
     }
     LOSS_FUNCTIONS = {
         "MSE": {

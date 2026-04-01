@@ -64,7 +64,9 @@ def parse_line(line):
     Assumes structure: 27 feature values and 1 label value"""
 
     line_parts = line.strip().split()
-    if line_parts is None or len(line) != 28: # 27 features + 1 label
+    if line_parts is None or len(line_parts) != 28: # 27 features + 1 label
+        print(len(line_parts))
+        print(line_parts)
         raise ValueError(f"Check input file - expected 28, got {len(line_parts)}")
     
     
