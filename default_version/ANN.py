@@ -559,9 +559,6 @@ class ANN():
             total_error = 0
             
             for x, y in zip(input_vectors, y_s):
-                # Make sure x and y are column vectors
-                #x_col = [[xi] for xi in x] if isinstance(x[0], (int, float)) else x
-                #y_col = [[yi] for yi in y] if isinstance(y[0], (int, float)) else y
     
                 # Compute network prediction
                 pred = self.prediction([x])
