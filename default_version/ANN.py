@@ -7,11 +7,19 @@ random.seed(0)
 
 class ANN():
     
+    EULER_NUMBER = 2.718281828459045
+    
     ACTIVATION_FUNCTIONS = {
         # *** change from relu to sigmoid
         "relu": {
             "func": lambda x: max(0, x),
             "deriv": lambda x: 1 if x >= 0 else 0
+        }
+        "sigmoid": {
+            "func": lambda x: 1 / (1 + ANN.EULER_NUMBER ** (-x)),
+            # deriv can be optimized because digmoid is being computed twice
+            "deriv": lambda x: ((1 / (1 + YourClass.EULER_NUMBER ** (-x))) *
+                           (1 - (1 / (1 + YourClass.EULER_NUMBER ** (-x))))
         }
     }
     LOSS_FUNCTIONS = {
