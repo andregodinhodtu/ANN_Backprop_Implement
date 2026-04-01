@@ -3,7 +3,7 @@
 ##################################
 import random
 
-random.seed(42) 
+random.seed(1) 
 
 class ANN():
     
@@ -33,7 +33,7 @@ class ANN():
         "BinaryCrossEntropy" : {
             "func": lambda x, y: sum( - (y[i][0] * ANN.log(max(x[i][0], 1e-15)) +
                                     (1 - y[i][0]) * ANN.log(max(1 - x[i][0], 1e-15)))
-                                    for i in range(len(x))) ,
+                                    for i in range(len(x))) / len(x),  # divide by N
             "deriv": lambda x, y: (x - y) / (x * (1 - x) + 1e-15)
         }
     }
@@ -49,7 +49,7 @@ class ANN():
             y = y - (cls.EULER_NUMBER**y - x) / (cls.EULER_NUMBER**y)
         return y
     
-    def __init__(self, n_layers, n_neurons_each_layer, activation_function, loss_function):
+    def __init__(self, n_layers, n_neurons_each_layer, activation_hidden, activation_output, loss_function):
         
         # Input Confirmation
         if not isinstance(n_layers, int):
@@ -65,14 +65,17 @@ class ANN():
             raise ValueError("n_layers must be > 0")
         if len(n_neurons_each_layer) != n_layers:
            raise ValueError("Length of n_neurons_each_layer must equal n_layers")    
-        if activation_function not in self.ACTIVATION_FUNCTIONS:
-           raise ValueError(f"Unknown activation function: {activation_function}")
+        if activation_hidden not in self.ACTIVATION_FUNCTIONS:
+            raise ValueError(f"Unknown hidden activation function: {activation_hidden}")
+        if activation_output not in self.ACTIVATION_FUNCTIONS:
+            raise ValueError(f"Unknown output activation function: {activation_output}")
             
             
         # Initial settings obligatory
         self.n_layers =  n_layers
         self.n_neurons_each_layer =  n_neurons_each_layer
-        self.activation_function = self.ACTIVATION_FUNCTIONS[activation_function]["func"]
+        self.activation_hidden = self.ACTIVATION_FUNCTIONS[activation_hidden]["func"]
+        self.activation_output = self.ACTIVATION_FUNCTIONS[activation_output]["func"]
         self.loss_function = self.LOSS_FUNCTIONS[loss_function]["func"]
         
         # Parameters of the Network to build
@@ -91,7 +94,8 @@ class ANN():
         self.loss_deriv_of_weights = []
         self.loss_deriv_of_bias = []
         self.delta_s = [[] for x in range(n_layers)]
-        self.activation_function_deriv = self.ACTIVATION_FUNCTIONS[activation_function]["deriv"]
+        self.activation_hidden_deriv = self.ACTIVATION_FUNCTIONS[activation_hidden]["deriv"]
+        self.activation_output_deriv = self.ACTIVATION_FUNCTIONS[activation_output]["deriv"]
         self.loss_function_deriv = self.LOSS_FUNCTIONS[loss_function]["deriv"]
         
         
@@ -206,14 +210,46 @@ class ANN():
         """
         return [[z[i][0] + b[i][0]] for i in range(len(z))]
         
-    def _apply_activation(self, vector):
+    def _apply_activation(self, vector, layer_idx=None):
         """
-        Apply self.activation_function element-wise to a column vector,
-        keeping it as a vertical vector.
-    
-        vector: list of lists [[x1], [x2], ...] or numpy column vector
+        Apply the correct activation function based on layer index.
         """
-        return [[self.activation_function(x[0])] for x in vector]
+        if layer_idx is not None and layer_idx == self.n_layers - 2:
+            # Output layer
+            func = self.activation_output
+        else:
+            # Hidden layers
+            func = self.activation_hidden
+
+        return [[func(x[0])] for x in vector]
+        
+    def _average_matrices(self,matrices):
+        """
+        Averages a list of matrices element-wise.
+        All matrices must have the same dimensions.
+        """
+        if not matrices:
+            return []
+
+        n_rows = len(matrices[0])
+        n_cols = len(matrices[0][0])
+
+        # Initialize output matrix with zeros
+        avg_matrix = [[0 for _ in range(n_cols)] for _ in range(n_rows)]
+
+        # Sum all matrices element-wise
+        for mat in matrices:
+            for i in range(n_rows):
+                for j in range(n_cols):
+                    avg_matrix[i][j] += mat[i][j]
+
+        # Divide by the number of matrices to get average
+        n_matrices = len(matrices)
+        for i in range(n_rows):
+            for j in range(n_cols):
+                avg_matrix[i][j] /= n_matrices
+
+        return avg_matrix
         
         
     def _build_ANN(self):
@@ -231,12 +267,15 @@ class ANN():
         # Build the structure of the ANN    
         for i in range(self.n_layers - 1):
             # Weight matrix: next_layer_neurons x current_layer_neurons
+            
+            limit = (1 / (self.n_neurons_each_layer[i])) ** 0.5
+
             weight_matrix = [
-                [random.uniform(-0.5, 0.5) for _ in range(self.n_neurons_each_layer[i])]
+                [random.uniform(-limit, limit) for _ in range(self.n_neurons_each_layer[i])]
                 for _ in range(self.n_neurons_each_layer[i+1])
             ]
             self.weights.append(weight_matrix)
-
+            
             # Bias vector: next_layer_neurons x 1, small positive to avoid dead ReLU
             bias_vector = [[0.01] for _ in range(self.n_neurons_each_layer[i+1])]
             self.bias.append(bias_vector)
@@ -268,7 +307,7 @@ class ANN():
             self.z_s.append(z)  # store pre-activation
 
             # Apply activation
-            a = self._apply_activation(z)
+            a = self._apply_activation(z, layer_idx=i)
             self.a_s.append(a)   # store activation
             
             """if i == self.n_layers - 2:
@@ -326,7 +365,7 @@ class ANN():
             if layer == self.n_layers-1:
                 for neuron in range(self.n_neurons_each_layer[layer]):
                     
-                    # Gradient of the loss with respect to the output layer activations
+                    """# Gradient of the loss with respect to the output layer activations
                     # dL/da (last activation)
                     a = self.a_s[layer][neuron][0]
                     y = working_y[neuron][0]
@@ -338,6 +377,12 @@ class ANN():
                     deriv_activation = self.activation_function_deriv(z)
                     
                     delta = deriv_loss * deriv_activation
+                    self.delta_s[layer].append(delta)"""
+                    a = self.a_s[layer][neuron][0]
+                    y = working_y[neuron][0]
+            
+                    # Simplified gradient for sigmoid + BCE
+                    delta = a - y
                     self.delta_s[layer].append(delta)
                     
             else:
@@ -356,12 +401,10 @@ class ANN():
                     # Derivative of the activation function with respect to z (pre-activation)
                     # da/dz
                     z = self.z_s[layer][neuron][0]
-                    deriv_activation = self.activation_function_deriv(z)
+                    deriv_activation = self.activation_hidden_deriv(z)
                     
                     delta = sum_over_next_layer_neurons * deriv_activation
                     self.delta_s[layer].append(delta)
-                    
-                
                     
         # Now let´s fill in the  self.loss_deriv_of_weights and self.loss_deriv_of_bias
         for layer in range(self.n_layers-1):
@@ -435,6 +478,105 @@ class ANN():
             print(f"\n" + "#"*28 + " 2º Network Response " + "#"*28 + "\n")
             self._print_matrix(network_response)
             print(f"Error for this cycle is {self.loss_function(working_y, network_response)}")
+        
+    
+    def backpropation_batch(self, input_vectors, y_s, steps = 1000, learning_rate = 0.005):
+        """
+        input_vectors: list of input vectors [[x1_1, x1_2, ...], [x2_1, x2_2, ...], ...]
+        y_s: list of corresponding labels [[y1_1, y1_2, ...], [y2_1, y2_2, ...], ...]
+        """
+        # Size of the batch
+        batch_size = len(input_vectors)
+        
+        # Prepare y_s
+        working_y_s = [self._tranpose_matrix(y) for y in y_s]
+        
+        # print(f"\n" + "#"*25 + " Init Backprop Matrixes " + "#"*25 + "\n")
+        # Built backprop matrix_structure
+        self._build_backprop_matrix()
+        
+        for step in range(steps):
+            
+            # Restart stroing matrixes
+            store_weight_matrix_for_each_step = []
+            store_bias_matrix_for_each_step = []
+            
+            for input_vector, working_y in zip(input_vectors, working_y_s):
+                
+                # Use the network and compute a prediction
+                network_response = self.prediction([input_vector])
+                
+                # Start by performing backpropagation in the current weights and activations
+                self._backpropagation(working_y)
+                
+                # Add the loss derivative w.r.t weights and bias matrixes to the storage
+                store_weight_matrix_for_each_step.append(self._copy_structure(self.loss_deriv_of_weights))
+                store_bias_matrix_for_each_step.append(self._copy_structure(self.loss_deriv_of_bias))
+                
+                # Clean Matrixes 
+                for matrix in self.loss_deriv_of_weights:
+                    self._fill_with_none(matrix)
+                    
+                for matrix in self.loss_deriv_of_bias:
+                    self._fill_with_none(matrix)
+            
+            # Will hold the averaged weights and bias per layer
+            averaged_weights = []
+            averaged_bias = []
+            
+            for layer in range(self.n_layers - 1):
+                # Collect all weight matrices for this layer across the batch
+                matrices_to_average = [ex[layer] for ex in store_weight_matrix_for_each_step]
+                averaged_weights.append(self._average_matrices(matrices_to_average))
+
+                # Collect all bias matrices for this layer across the batch
+                matrices_to_average_bias = [ex[layer] for ex in store_bias_matrix_for_each_step]
+                averaged_bias.append(self._average_matrices(matrices_to_average_bias))
+                
+            # Now averaged_weights and bias has one matrix per layer, ready to update your network
+            
+            adjusted_weight = []
+            adjusted_bias = []
+        
+            for matrix in averaged_weights:
+                adjusted_weight.append(self._product_by_scalar(learning_rate, matrix))
+            
+            for bias in averaged_bias:
+                adjusted_bias.append(self._product_by_scalar(learning_rate, bias))
+            
+            result_weight_matrix = []
+            result_bias_matrix = []
+            
+            for j in range(self.n_layers -1):
+                result_weight_matrix.append(self._subtract_matrices(self.weights[j],adjusted_weight[j]))
+                result_bias_matrix.append(self._subtract_matrices(self.bias[j],adjusted_bias[j]))
+            
+            self.weights = self._copy_structure(result_weight_matrix)
+            self.bias = self._copy_structure(result_bias_matrix)
+                
+            # Compute batch error for monitoring
+            
+            total_error = 0
+            
+            for x, y in zip(input_vectors, y_s):
+                # Make sure x and y are column vectors
+                #x_col = [[xi] for xi in x] if isinstance(x[0], (int, float)) else x
+                #y_col = [[yi] for yi in y] if isinstance(y[0], (int, float)) else y
+    
+                # Compute network prediction
+                pred = self.prediction([x])
+    
+                # Compute loss for this example
+                error = self.loss_function(pred, self._tranpose_matrix(y))
+    
+                # Add to total
+                total_error += error
+
+            # Average over batch
+            batch_error = total_error / batch_size
+
+            print(f"\n{'#'*20} Network Response after cycle: {step} {'#'*20}\n")
+            print(f"Batch Error for this cycle: {batch_error:.6f}\n")
     
     
 if __name__ == "__main__":
