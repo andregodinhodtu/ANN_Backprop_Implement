@@ -29,8 +29,25 @@ class ANN():
                 (x[i][0] - y[i][0]) ** 2 for i in range(len(x))
             ),
             "deriv": lambda x, y: 2 * (x - y)
+        },
+        "BinaryCrossEntropy" : {
+            "func": lambda x, y: sum( - (y[i][0] * ANN.log(max(x[i][0], 1e-15)) +
+                                    (1 - y[i][0]) * ANN.log(max(1 - x[i][0], 1e-15)))
+                                    for i in range(len(x))) ,
+            "deriv": lambda x, y: (x - y) / (x * (1 - x) + 1e-15)
         }
     }
+    
+    @classmethod
+    def log(cls, x, iterations=100):
+        """Compute natural log using Newton-Raphson method for ln(x)"""
+        if x <= 0:
+            raise ValueError("log undefined for non-positive numbers")
+        
+        y = x - 1.0  # initial guess
+        for _ in range(iterations):
+            y = y - (cls.EULER_NUMBER**y - x) / (cls.EULER_NUMBER**y)
+        return y
     
     def __init__(self, n_layers, n_neurons_each_layer, activation_function, loss_function):
         
@@ -354,7 +371,7 @@ class ANN():
                     self.loss_deriv_of_bias[layer][next_layer_neuron][0] = self.delta_s[layer+1][next_layer_neuron]
                     
         
-    def backprop_one_training_example(self, input_vector, y, step = 1000, learning_rate = 0.001):
+    def backprop_one_training_example(self, input_vector, y, step = 1000, learning_rate = 0.005):
         """Apply Chain Rule
            We want to calculate the derivatives for the Lost in
            function of the Weights and the biases"""
