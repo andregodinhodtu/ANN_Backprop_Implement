@@ -2,7 +2,7 @@ import ANN
 import data_prep
 
 
-filename = "../data/training_set.howlin"
+filename = "data/training_set.howlin"
 
 # 1 SAMPLE CHECK
 
