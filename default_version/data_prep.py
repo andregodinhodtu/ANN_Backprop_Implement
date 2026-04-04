@@ -2,9 +2,6 @@ import random
 
 # INPUT for stohastic backpropagation
 
-filename = "data/training_set.howlin"
-
-
 # iterator
 def load_and_split(filename, batch_size):
 
@@ -13,7 +10,7 @@ def load_and_split(filename, batch_size):
     
     Each call of load_and_split() will produce different batches due to random shuffling.
     """
-    
+
     # load entire file
     inputs, labels = parse_input(filename)
 
@@ -50,7 +47,7 @@ def parse_input(filename, start=None, end=None):
     label_list = []
     for value, label in iterate_input(filename=filename, start=start, end=end):
         input_list.append(value)
-        label_list.append(label)
+        label_list.append([label])
 
     return input_list, label_list
 

@@ -3,7 +3,7 @@
 ##################################
 import random
 
-random.seed(1) 
+# no seed - each ANN should be initialised with random weights + epochs must differ 
 
 class ANN():
     
@@ -13,7 +13,7 @@ class ANN():
         # *** change from relu to sigmoid
         "relu": {
             "func": lambda x: max(0, x),
-            "deriv": lambda x: 1 if x >= 0 else 0
+            "deriv": lambda x: 1 if x > 0 else 0
         },
         "sigmoid": {
             "func": lambda x: 1 / (1 + ANN.EULER_NUMBER ** (-x)),
@@ -70,7 +70,7 @@ class ANN():
         if activation_output not in self.ACTIVATION_FUNCTIONS:
             raise ValueError(f"Unknown output activation function: {activation_output}")
             
-            
+
         # Initial settings obligatory
         self.n_layers =  n_layers
         self.n_neurons_each_layer =  n_neurons_each_layer
@@ -119,6 +119,7 @@ class ANN():
         
     def _tranpose_matrix(self,matrix):
         """ Helper function to transpose a matrix"""
+        
         # Number of rows and columns
         n_row = len(matrix)
         n_col = len(matrix[0])
@@ -252,23 +253,24 @@ class ANN():
         return avg_matrix
         
         
-    def _build_ANN(self):
+    def _build_ANN(self, verbose=False):
         """ 
         Create the weights and biases
         """
-        print(f"The builder will create a ANN with:")
-        
-        # Just checking the input
-        for i, n_neurons in zip(range(self.n_layers), self.n_neurons_each_layer):
-            print(f" - In the {i} layer with {n_neurons} neurons")
-            
-        print(f"\n" + "#"*30 + " Build ANN " + "#"*30 + "\n")
+        if verbose:
+            print(f"The builder will create a ANN with:")
+            # Just checking the input
+            for i, n_neurons in zip(range(self.n_layers), self.n_neurons_each_layer):
+                print(f" - In the {i} layer with {n_neurons} neurons")
+                
+            print(f"\n" + "#"*30 + " Build ANN " + "#"*30 + "\n")
         
         # Build the structure of the ANN    
         for i in range(self.n_layers - 1):
             # Weight matrix: next_layer_neurons x current_layer_neurons
             
-            limit = (1 / (self.n_neurons_each_layer[i])) ** 0.5
+            #  He initialization (sqrt(2/n)) is better because it accounts for the fact that ReLU zeros out half its inputs
+            limit = (2 / (self.n_neurons_each_layer[i])) ** 0.5
 
             weight_matrix = [
                 [random.uniform(-limit, limit) for _ in range(self.n_neurons_each_layer[i])]
@@ -280,11 +282,12 @@ class ANN():
             bias_vector = [[0.01] for _ in range(self.n_neurons_each_layer[i+1])]
             self.bias.append(bias_vector)
 
-            print(f"Weight matrix between layer {i} and layer {i+1}:")
-            self._print_matrix(weight_matrix)
-            print(f"Bias Vector between layer {i} and layer {i+1}:")
-            self._print_matrix(bias_vector)
-        
+            if verbose:
+                print(f"Weight matrix between layer {i} and layer {i+1}:")
+                self._print_matrix(weight_matrix)
+                print(f"Bias Vector between layer {i} and layer {i+1}:")
+                self._print_matrix(bias_vector)
+            
     def prediction(self, input_vector):
         """
         Make an example pass through the ANN
@@ -330,7 +333,7 @@ class ANN():
 
         # make sure the lists are empty
         self.loss_deriv_of_weights = []
-        self.loss_deriv_of_bias = []
+        self.loss_deriv_of_bias = [] 
         
         # Build the structure of the ANN    
         for i in range(self.n_layers - 1):
@@ -369,7 +372,7 @@ class ANN():
             if layer == self.n_layers-1:
                 for neuron in range(self.n_neurons_each_layer[layer]):
                     
-                    """# Gradient of the loss with respect to the output layer activations
+                    # Gradient of the loss with respect to the output layer activations
                     # dL/da (last activation)
                     a = self.a_s[layer][neuron][0]
                     y = working_y[neuron][0]
@@ -378,18 +381,24 @@ class ANN():
                     # Derivative of the activation function with respect to z (pre-activation)
                     # da/dz
                     z = self.z_s[layer][neuron][0]
-                    deriv_activation = self.activation_function_deriv(z)
+                    deriv_activation = self.activation_output_deriv(z)
                     
                     delta = deriv_loss * deriv_activation
-                    self.delta_s[layer].append(delta)"""
+                    self.delta_s[layer].append(delta)
                     a = self.a_s[layer][neuron][0]
                     y = working_y[neuron][0]
-            
+                    
+
+                    # this is ok only for the output layer, generalization
                     # Simplified gradient for sigmoid + BCE
-                    delta = a - y
-                    self.delta_s[layer].append(delta)
+                   # delta = a - y
+                   # self.delta_s[layer].append(delta)
                     
             else:
+                   # skip layer 0 — it's the input, no activation to differentiate
+                if layer == 0:
+                    continue
+
                 for neuron in range(self.n_neurons_each_layer[layer]):
                     sum_over_next_layer_neurons = 0
                     for next_layer_neuron in range(self.n_neurons_each_layer[layer+1]):
@@ -404,9 +413,11 @@ class ANN():
                     
                     # Derivative of the activation function with respect to z (pre-activation)
                     # da/dz
+                   # print(f"layer={layer}, len(z_s)={len(self.z_s)}, neuron={neuron}")
+
                     z = self.z_s[layer][neuron][0]
                     deriv_activation = self.activation_hidden_deriv(z)
-                    
+                     
                     delta = sum_over_next_layer_neurons * deriv_activation
                     self.delta_s[layer].append(delta)
                     
@@ -418,7 +429,7 @@ class ANN():
                     self.loss_deriv_of_bias[layer][next_layer_neuron][0] = self.delta_s[layer+1][next_layer_neuron]
                     
         
-    def backprop_one_training_example(self, input_vector, y, step = 1000, learning_rate = 0.005):
+    def backprop_one_training_example(self, input_vector, y, step = 1000, learning_rate = 0.005, verbose=False):
         """Apply Chain Rule
            We want to calculate the derivatives for the Lost in
            function of the Weights and the biases"""
@@ -429,21 +440,23 @@ class ANN():
         self._build_backprop_matrix()
         
         network_response = self.prediction(input_vector)
-        print(f"\n" + "#"*28 + " 1º Network Response " + "#"*28 + "\n")
-        self._print_matrix(network_response)
-        print(f"Error for this cycle is {self.loss_function(working_y, network_response):.4f} \n")
         
-        for i in range(step):
+        if verbose:
+            print(f"\n" + "#"*28 + " 1º Network Response " + "#"*28 + "\n")
+            self._print_matrix(network_response)
+            print(f"Error for this cycle is {self.loss_function(working_y, network_response):.4f} \n")
             
-            print(f"-"*20 + f" Backpropagation cycle number {i} " + "-"*20)
+        for i in range(step):
+            if verbose:
+                print(f"-"*20 + f" Backpropagation cycle number {i} " + "-"*20)
             
             # Start by performing backpropagation in the current weights and activations
             self._backpropagation(working_y)
-        
-            print(f"\n" + "#"*28 + " 1º Cycle Backprop " + "#"*28)
-            print(f"#"*7 + " Values straight out of backprop, before any product to lr  " + "#"*7 + "\n")
-        
-            self._print_weight_and_bias_matrices(self.loss_deriv_of_weights,self.loss_deriv_of_bias)
+
+            if verbose:
+                print(f"\n" + "#"*28 + " 1º Cycle Backprop " + "#"*28)
+                print(f"#"*7 + " Values straight out of backprop, before any product to lr  " + "#"*7 + "\n")
+                self._print_weight_and_bias_matrices(self.loss_deriv_of_weights,self.loss_deriv_of_bias)
             
             # Change weights 
         
@@ -463,9 +476,10 @@ class ANN():
                 result_weight_matrix.append(self._subtract_matrices(self.weights[j],adjusted_weight[j]))
                 result_bias_matrix.append(self._subtract_matrices(self.bias[j],adjusted_bias[j]))
             
-            print(f"\n" + "#"*30 + " New parameters " + "#"*30 + "\n")
+            if verbose:
+                print(f"\n" + "#"*30 + " New parameters " + "#"*30 + "\n")
+                self._print_weight_and_bias_matrices(result_weight_matrix,result_bias_matrix)
             
-            self._print_weight_and_bias_matrices(result_weight_matrix,result_bias_matrix)
             self.weights = self._copy_structure(result_weight_matrix)
             self.bias = self._copy_structure(result_bias_matrix)
             
@@ -479,12 +493,13 @@ class ANN():
                 
             
             network_response = self.prediction(input_vector)
-            print(f"\n" + "#"*28 + " 2º Network Response " + "#"*28 + "\n")
-            self._print_matrix(network_response)
-            print(f"Error for this cycle is {self.loss_function(working_y, network_response)}")
-        
+            if verbose:
+                print(f"\n" + "#"*28 + " 2º Network Response " + "#"*28 + "\n")
+                self._print_matrix(network_response)
+                print(f"Error for this cycle is {self.loss_function(working_y, network_response)}")
+            
     
-    def backpropation_batch(self, input_vectors, y_s, steps = 1000, learning_rate = 0.005):
+    def backpropagation_batch(self, input_vectors, y_s, steps = 1000, learning_rate = 0.005, verbose=False):
         """
         input_vectors: list of input vectors [[x1_1, x1_2, ...], [x2_1, x2_2, ...], ...]
         y_s: list of corresponding labels [[y1_1, y1_2, ...], [y2_1, y2_2, ...], ...]
@@ -493,7 +508,7 @@ class ANN():
         batch_size = len(input_vectors)
         
         # Prepare y_s
-        working_y_s = [self._tranpose_matrix(y) for y in y_s]
+        working_y_s = [self._tranpose_matrix(y if isinstance(y, list) else [y]) for y in y_s]
         
         # print(f"\n" + "#"*25 + " Init Backprop Matrixes " + "#"*25 + "\n")
         # Built backprop matrix_structure
@@ -575,10 +590,10 @@ class ANN():
 
             # Average over batch
             batch_error = total_error / batch_size
-
-            print(f"\n{'#'*20} Network Response after cycle: {step} {'#'*20}\n")
-            print(f"Batch Error for this cycle: {batch_error:.6f}\n")
-    
+            if verbose:
+                print(f"\n{'#'*20} Network Response after cycle: {step} {'#'*20}\n")
+                print(f"Batch Error for this cycle: {batch_error:.6f}\n")
+        
 
 # testing
 def main():
