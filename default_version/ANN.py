@@ -327,6 +327,10 @@ class ANN():
         Creates List structure that stores the derivatives of the Loss in function
         of the weights and the biasas 
         """
+
+        # make sure the lists are empty
+        self.loss_deriv_of_weights = []
+        self.loss_deriv_of_bias = []
         
         # Build the structure of the ANN    
         for i in range(self.n_layers - 1):
@@ -575,9 +579,9 @@ class ANN():
             print(f"\n{'#'*20} Network Response after cycle: {step} {'#'*20}\n")
             print(f"Batch Error for this cycle: {batch_error:.6f}\n")
     
-    
-if __name__ == "__main__":
-    
+
+# testing
+def main():
     print(f"\n" + "#"*74)       
     print(f"#"*30 + " Start Script " + "#"*30)        
     print(f"#"*74 + "\n")   
@@ -593,3 +597,9 @@ if __name__ == "__main__":
     working_y = [[1,2,3]]
 
     test_nn.backprop_one_training_example(test_prediction, working_y)
+
+
+
+if __name__ == "__main__":
+    main()
+    
