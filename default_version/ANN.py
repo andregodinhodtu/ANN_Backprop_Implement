@@ -2,15 +2,13 @@
 # Build Aritificial Neural Network
 ##################################
 import random
-
-# no seed - each ANN should be initialised with random weights + epochs must differ 
+from ANN_layer import ANN_Layer
 
 class ANN():
     
     EULER_NUMBER = 2.718281828459045
     
     ACTIVATION_FUNCTIONS = {
-        # *** change from relu to sigmoid
         "relu": {
             "func": lambda x: max(0, x),
             "deriv": lambda x: 1 if x > 0 else 0
@@ -23,6 +21,7 @@ class ANN():
         }
     
     }
+    
     LOSS_FUNCTIONS = {
         "MSE": {
             "func": lambda x, y: sum(
@@ -48,283 +47,127 @@ class ANN():
         for _ in range(iterations):
             y = y - (cls.EULER_NUMBER**y - x) / (cls.EULER_NUMBER**y)
         return y
+        
     
-    def __init__(self, n_layers, n_neurons_each_layer, activation_hidden, activation_output, loss_function):
-        
-        # Input Confirmation
-        if not isinstance(n_layers, int):
-            raise TypeError("n_layers must be an Integer")
-        if not isinstance(n_neurons_each_layer, list):
-            raise TypeError("n_neurons_each_layer should be a list")
-        if not all(isinstance(n, int) for n in n_neurons_each_layer):
-            raise TypeError("All elements in n_neurons_each_layer must be integers")
-        
-        
-        # Value checks
+    def __init__(self, n_layers, n_neurons_each_layer, activation_hidden="relu",
+                 activation_output="sigmoid", loss_function="MSE"):
+        """
+        Build a feedforward neural network with n_layers.
+    
+        Parameters:
+        -----------
+        n_layers : int
+            Number of layers (including output).
+        n_neurons_each_layer : list of ints
+            Number of neurons in each layer. Length must equal n_layers.
+        activation_hidden : str
+            Activation function for hidden layers.
+        activation_output : str
+            Activation function for the output layer.
+        loss_function : str
+            Loss function to use.
+        """
+        # Input validation
         if n_layers <= 0:
             raise ValueError("n_layers must be > 0")
         if len(n_neurons_each_layer) != n_layers:
-           raise ValueError("Length of n_neurons_each_layer must equal n_layers")    
-        if activation_hidden not in self.ACTIVATION_FUNCTIONS:
-            raise ValueError(f"Unknown hidden activation function: {activation_hidden}")
-        if activation_output not in self.ACTIVATION_FUNCTIONS:
-            raise ValueError(f"Unknown output activation function: {activation_output}")
-            
-
-        # Initial settings obligatory
-        self.n_layers =  n_layers
-        self.n_neurons_each_layer =  n_neurons_each_layer
-        self.activation_hidden = self.ACTIVATION_FUNCTIONS[activation_hidden]["func"]
-        self.activation_output = self.ACTIVATION_FUNCTIONS[activation_output]["func"]
-        self.loss_function = self.LOSS_FUNCTIONS[loss_function]["func"]
+            raise ValueError("Length of n_neurons_each_layer must equal n_layers")
+    
+        # Store activation functions and loss
+        self.n_layers = n_layers
+        self.n_neurons_each_layer = n_neurons_each_layer
+        self.activation_hidden = activation_hidden
+        self.activation_output = activation_output
+        self.loss_function = loss_function
         
-        # Parameters of the Network to build
-        self.weights = []
-        self.bias = []
-        
-        # Build the ANN
+        # Layers container
+        self.layers = []
+    
+        # Build layers
         self._build_ANN()
         
-        # Results in each step
-        self.z_s = []
-        self.a_s = []
-  
-
-        # Backpropagation
-        self.loss_deriv_of_weights = []
-        self.loss_deriv_of_bias = []
-        self.delta_s = [[] for x in range(n_layers)]
-        self.activation_hidden_deriv = self.ACTIVATION_FUNCTIONS[activation_hidden]["deriv"]
-        self.activation_output_deriv = self.ACTIVATION_FUNCTIONS[activation_output]["deriv"]
-        self.loss_function_deriv = self.LOSS_FUNCTIONS[loss_function]["deriv"]
-        
-        
-    def _print_matrix(self, matrix):
-        for row in matrix:
-            print("\t".join(
-                f"{val:8.3f}" if val is not None else f"{'None':>8}"
-                for val in row
-            ))
-        pass
-        
-    def _print_weight_and_bias_matrices(self, weight_matrices, bias_matrices):
-        """Print weight and bias matrices for each layer"""
-    
-        for i, (w, b) in enumerate(zip(weight_matrices, bias_matrices)):
-            print(f"Weights between layer {i} and layer {i+1}:")
-            self._print_matrix(w)
-        
-            print(f"Biases for layer {i+1}:")
-            self._print_matrix(b)
-        
-    def _tranpose_matrix(self,matrix):
-        """ Helper function to transpose a matrix"""
-        
-        # Number of rows and columns
-        n_row = len(matrix)
-        n_col = len(matrix[0])
-    
-        # Initialize output matrix
-        matrix_T = []
-    
-        # Change positions and build new row
-        for i in range(n_col):
-            new_row= []
-            for j in range(n_row):
-                new_row.append(matrix[j][i])
-        
-            # Append new row to final matrix
-            matrix_T.append(new_row)
+    def _build_ANN(self):
+        """Private method to construct the layers of the network."""
+        for i in range(self.n_layers -1):
+            # Number of inputs for this layer
+            n_input = self.n_neurons_each_layer[i]
+            # Number of neurons in this layer
+            n_output = self.n_neurons_each_layer[i+1]
+            # Choose activation
+            act = self.activation_hidden if i == self.n_layers-2 else self.activation_output
             
-        return matrix_T
-        
-    def _product(self,matrix_a,matrix_b):
-        """ Matrix Multiplication of matrixes stored as lists of lists"""
-    
-        # Number of rows
-        n_row_a = len(matrix_a) #*dont need this
-        n_row_b = len(matrix_b)
-    
-        # Number of cols
-        n_col_a = len(matrix_a[0])
-        n_col_b = len(matrix_b[0]) #*dont need this
-    
-        # Check if number of cols in A is the same of rows in B to perform product
-        if n_col_a != n_row_b:
-            raise ValueError("Product not possible, different number of cols in A and rows in B")
-        
-        # Initialize output matrix
-        output_matrix = []
-    
-        # Transposed of B, useful for row * col multiplication      
-        matrix_b_T = self._tranpose_matrix(matrix_b)
-    
-        # Running trough the calculation of each cell for the new matrix
-        for row_a in matrix_a:
-            output_row = []
-            for col_b in matrix_b_T:
-                output_row.append(sum([x * y for x, y in zip(row_a, col_b)]))
+            # Create ANN_Layer
+            layer = ANN_Layer(
+                n=i,
+                n_neurons_input=n_input,
+                n_neurons_output=n_output,
+                activation_function=act
+            )
             
-            output_matrix.append(output_row)
-
-        return output_matrix
-        
-    def _product_by_scalar(self, scalar, matrix):
-        """Multiply every element of a matrix by a scalar"""
-    
-        output_matrix = []
-    
-        for row in matrix:
-            output_row = []
-            for value in row:
-                output_row.append(scalar * value)
-            output_matrix.append(output_row)
-    
-        return output_matrix
-        
-    def _subtract_matrices(self, matrix_a, matrix_b):
-        """Subtract two matrices element-wise (matrix_a - matrix_b)"""
-    
-        # Check dimensions
-        if len(matrix_a) != len(matrix_b) or len(matrix_a[0]) != len(matrix_b[0]):
-            raise ValueError("Matrices must have the same dimensions")
-    
-        # Element-wise subtraction
-        result = []
-        for row_a, row_b in zip(matrix_a, matrix_b):
-            result.append([a - b for a, b in zip(row_a, row_b)])
-    
-        return result
-        
-    def _copy_structure(self, matrices):
-        """Deep copy a list of matrices (list of list of lists)"""
-    
-        return [
-            [row[:] for row in matrix]   # copy each row
-            for matrix in matrices       # for each matrix
-        ]
-        
-        
-    def _add_bias(self, z, b):
-        """
-        Add bias vector b to pre-activation z.
-        """
-        return [[z[i][0] + b[i][0]] for i in range(len(z))]
-        
-    def _apply_activation(self, vector, layer_idx=None):
-        """
-        Apply the correct activation function based on layer index.
-        """
-        if layer_idx is not None and layer_idx == self.n_layers - 2:
-            # Output layer
-            func = self.activation_output
-        else:
-            # Hidden layers
-            func = self.activation_hidden
-
-        return [[func(x[0])] for x in vector]
-        
-    def _average_matrices(self,matrices):
-        """
-        Averages a list of matrices element-wise.
-        All matrices must have the same dimensions.
-        """
-        if not matrices:
-            return []
-
-        n_rows = len(matrices[0])
-        n_cols = len(matrices[0][0])
-
-        # Initialize output matrix with zeros
-        avg_matrix = [[0 for _ in range(n_cols)] for _ in range(n_rows)]
-
-        # Sum all matrices element-wise
-        for mat in matrices:
-            for i in range(n_rows):
-                for j in range(n_cols):
-                    avg_matrix[i][j] += mat[i][j]
-
-        # Divide by the number of matrices to get average
-        n_matrices = len(matrices)
-        for i in range(n_rows):
-            for j in range(n_cols):
-                avg_matrix[i][j] /= n_matrices
-
-        return avg_matrix
-        
-        
-    def _build_ANN(self, verbose=False):
-        """ 
-        Create the weights and biases
-        """
-        if verbose:
-            print(f"The builder will create a ANN with:")
-            # Just checking the input
-            for i, n_neurons in zip(range(self.n_layers), self.n_neurons_each_layer):
-                print(f" - In the {i} layer with {n_neurons} neurons")
-                
-            print(f"\n" + "#"*30 + " Build ANN " + "#"*30 + "\n")
-        
-        # Build the structure of the ANN    
-        for i in range(self.n_layers - 1):
-            # Weight matrix: next_layer_neurons x current_layer_neurons
+            # Initialize weights and biases (optional fixed seed)
+            layer.initialize_weights_bias(seed=42)
             
-            #  He initialization (sqrt(2/n)) is better because it accounts for the fact that ReLU zeros out half its inputs
-            limit = (2 / (self.n_neurons_each_layer[i])) ** 0.5
-
-            weight_matrix = [
-                [random.uniform(-limit, limit) for _ in range(self.n_neurons_each_layer[i])]
-                for _ in range(self.n_neurons_each_layer[i+1])
-            ]
-            self.weights.append(weight_matrix)
-            
-            # Bias vector: next_layer_neurons x 1, small positive to avoid dead ReLU
-            bias_vector = [[0.01] for _ in range(self.n_neurons_each_layer[i+1])]
-            self.bias.append(bias_vector)
-
-            if verbose:
-                print(f"Weight matrix between layer {i} and layer {i+1}:")
-                self._print_matrix(weight_matrix)
-                print(f"Bias Vector between layer {i} and layer {i+1}:")
-                self._print_matrix(bias_vector)
+            # Add to layers list
+            self.layers.append(layer)
             
     def prediction(self, input_vector):
         """
-        Make an example pass through the ANN
+        Make a forward pass through the entire ANN.
+
+        Parameters:
+        -----------
+        input_vector : list of lists
+            Input column vector (shape: n_input x 1).
+
+        Returns:
+        --------
+        list of lists
+            Output of the last layer after activation.
         """
+        working_vector = input_vector
 
-        # Convert input to column vector
-        working_vector = self._tranpose_matrix(input_vector)
+        # Forward pass through all layers
+        for layer in self.layers:
+            # Use the layer's __call__ to do forward pass and activation
+            working_vector = layer(working_vector)
+
+        return working_vector
         
-        self.a_s = [working_vector]  # store input as activation
-        self.z_s = [working_vector]  # input_vector + list for pre-activations
+    def _compute_deltas(self, y):
+        """
+        Compute delta values for each layer in the network for backpropagation.
+        Stores them in each layer's `.delta` attribute.
 
-        # Forward pass through each layer
-        for i in range(self.n_layers - 1):
-            W = self.weights[i]
-            b = self.bias[i]    
+        Parameters:
+        -----------
+        y : list of lists
+            Target output column vector (shape: n_output x 1)
+        """
+        # Start from output layer and go backward
+        for i in reversed(range(len(self.layers))):
+            layer = self.layers[i]
 
-            # z = W @ a + b
-            z = self._product(W, working_vector)
-            z = self._add_bias(z, b)
-            self.z_s.append(z)  # store pre-activation
-
-            # Apply activation
-            a = self._apply_activation(z, layer_idx=i)
-            self.a_s.append(a)   # store activation
-            
-            """if i == self.n_layers - 2:
-            a = z  # linear output
+            if i == len(self.layers) - 1:
+                # Output layer
+                layer.delta = []
+                for j in range(layer.n_neurons_output):
+                    a = layer.a_s[j][0]           # activation
+                    target = y[j][0]              # true value
+                    dz = self.LOSS_FUNCTIONS[self.loss_function]["deriv"](a, target) * layer.ACTIVATION_FUNCTIONS[layer.activation_function]['deriv'](layer.z_s[j][0])
+                    layer.delta.append(dz)
             else:
-            a = self._apply_activation(z)"""
-            # Activation in last layer maybe it´s not needed
+                # Hidden layers
+                next_layer = self.layers[i + 1]
+                layer.delta = []
+                for j in range(layer.n_neurons_output):
+                    # Sum over next layer's deltas weighted by corresponding weights
+                    weighted_sum = sum(
+                        next_layer.delta[k] * next_layer.weights[k][j]
+                        for k in range(next_layer.n_neurons_output)
+                    )
+                    dz = weighted_sum * layer.ACTIVATION_FUNCTIONS[layer.activation_function]['deriv'](layer.z_s[j][0])
+                    layer.delta.append(dz)
 
-            # Set input for next layer
-            working_vector = a
-
-        return working_vector  # output of last layer
-        
-    
     def _build_backprop_matrix(self):
         """ 
         Creates List structure that stores the derivatives of the Loss in function
@@ -593,28 +436,4 @@ class ANN():
             if verbose:
                 print(f"\n{'#'*20} Network Response after cycle: {step} {'#'*20}\n")
                 print(f"Batch Error for this cycle: {batch_error:.6f}\n")
-        
-
-# testing
-def main():
-    print(f"\n" + "#"*74)       
-    print(f"#"*30 + " Start Script " + "#"*30)        
-    print(f"#"*74 + "\n")   
-
-    test_n_layers = 3
-    test_n_neurons_each_layer = [3,5,3]
-    test_nn = ANN(test_n_layers,
-             test_n_neurons_each_layer,
-             "relu",
-             "MSE")
-             
-    test_prediction = [[1,1,2]]
-    working_y = [[1,2,3]]
-
-    test_nn.backprop_one_training_example(test_prediction, working_y)
-
-
-
-if __name__ == "__main__":
-    main()
     
