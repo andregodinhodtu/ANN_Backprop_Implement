@@ -48,7 +48,6 @@ class ANN():
             y = y - (cls.EULER_NUMBER**y - x) / (cls.EULER_NUMBER**y)
         return y
         
-    
     def __init__(self, n_layers, n_neurons_each_layer, activation_hidden="relu",
                  activation_output="sigmoid", loss_function="MSE"):
         """
@@ -98,14 +97,14 @@ class ANN():
             
             # Create ANN_Layer
             layer = ANN_Layer(
-                n=i,
+                n=i+1,
                 n_neurons_input=n_input,
                 n_neurons_output=n_output,
                 activation_function=act
             )
             
             # Initialize weights and biases (optional fixed seed)
-            layer.initialize_weights_bias(seed=42)
+            layer.initialize_weights_bias(seed=42 +i)
             
             # Add to layers list
             self.layers.append(layer)
@@ -150,290 +149,167 @@ class ANN():
             if i == len(self.layers) - 1:
                 # Output layer
                 layer.delta = []
+                
+                # Computed activation derivatives for the layer
+                layer.compute_activation_derivatives()
+                
                 for j in range(layer.n_neurons_output):
                     a = layer.a_s[j][0]           # activation
                     target = y[j][0]              # true value
-                    dz = self.LOSS_FUNCTIONS[self.loss_function]["deriv"](a, target) * layer.ACTIVATION_FUNCTIONS[layer.activation_function]['deriv'](layer.z_s[j][0])
-                    layer.delta.append(dz)
+                    delta = self.LOSS_FUNCTIONS[self.loss_function]["deriv"](a, target) * layer.activation_derivatives[j]
+                    layer.delta.append(delta)
             else:
                 # Hidden layers
                 next_layer = self.layers[i + 1]
                 layer.delta = []
+                
+                # Computed activation derivatives for the layer
+                layer.compute_activation_derivatives()
+                
                 for j in range(layer.n_neurons_output):
                     # Sum over next layer's deltas weighted by corresponding weights
                     weighted_sum = sum(
                         next_layer.delta[k] * next_layer.weights[k][j]
                         for k in range(next_layer.n_neurons_output)
                     )
-                    dz = weighted_sum * layer.ACTIVATION_FUNCTIONS[layer.activation_function]['deriv'](layer.z_s[j][0])
-                    layer.delta.append(dz)
+                    delta = weighted_sum * layer.activation_derivatives[j]
+                    layer.delta.append(delta)
 
-    def _build_backprop_matrix(self):
-        """ 
-        Creates List structure that stores the derivatives of the Loss in function
-        of the weights and the biasas 
+    def compute_gradients_sample(self, input_vector, target):
         """
+        Computes gradients (dweights and dbiases) for a single training sample.
 
-        # make sure the lists are empty
-        self.loss_deriv_of_weights = []
-        self.loss_deriv_of_bias = [] 
-        
-        # Build the structure of the ANN    
-        for i in range(self.n_layers - 1):
-            
-            weight_matrix = [[None for x in range(self.n_neurons_each_layer[i])] for j in range(self.n_neurons_each_layer[i+1])]
-            self.loss_deriv_of_weights.append(weight_matrix)
-           
-            bias_vector = [[None] for x in range(self.n_neurons_each_layer[i+1])]
-            self.loss_deriv_of_bias.append(bias_vector)
+        input_vector: input column vector (list of lists)
 
-            """print(f"Weight matrix of Loss derivative between layer {i} and layer {i+1}:")
-            self._print_matrix(weight_matrix)
-            print(f"Bias Matrix of Loss derivative between layer {i} and layer {i+1}:")
-            self._print_matrix(bias_vector)"""
-            
-    def _fill_with_none(self, matrix):
-        """Modify the given matrix in-place, replacing all values with None"""
-    
-        for i in range(len(matrix)):
-            for j in range(len(matrix[i])):
-                matrix[i][j] = None
-    
-    
-    def _backpropagation(self, y):
-        
-        # for eah layer i want to run trough all the values of parameters in that layer
-        #that means running trough each next layer neurosn and inside for each layer neuron
-        
-        # First we will compute all the delta
-        
-        working_y = y
-        self.delta_s = [[] for _ in range(self.n_layers)]
-    
-        for layer in range(self.n_layers-1,-1,-1):
+        target: target output column vector (list of lists)
+        """
+        n_layers = len(self.layers)
 
-            if layer == self.n_layers-1:
-                for neuron in range(self.n_neurons_each_layer[layer]):
-                    
-                    # Gradient of the loss with respect to the output layer activations
-                    # dL/da (last activation)
-                    a = self.a_s[layer][neuron][0]
-                    y = working_y[neuron][0]
-                    deriv_loss = self.loss_function_deriv(a,y)
-                    
-                    # Derivative of the activation function with respect to z (pre-activation)
-                    # da/dz
-                    z = self.z_s[layer][neuron][0]
-                    deriv_activation = self.activation_output_deriv(z)
-                    
-                    delta = deriv_loss * deriv_activation
-                    self.delta_s[layer].append(delta)
-                    a = self.a_s[layer][neuron][0]
-                    y = working_y[neuron][0]
-                    
+        # Forward pass (uses your existing method)
+        self.prediction(input_vector)
 
-                    # this is ok only for the output layer, generalization
-                    # Simplified gradient for sigmoid + BCE
-                   # delta = a - y
-                   # self.delta_s[layer].append(delta)
-                    
+        # Compute deltas
+        self._compute_deltas(target)
+        
+        # Compute gradients
+        for i in range(n_layers):
+            layer = self.layers[i]
+
+            # Determine input to this layer
+            if i == 0:
+                prev_activations = input_vector
             else:
-                   # skip layer 0 — it's the input, no activation to differentiate
-                if layer == 0:
-                    continue
+                prev_activations = self.layers[i - 1].a_s
 
-                for neuron in range(self.n_neurons_each_layer[layer]):
-                    sum_over_next_layer_neurons = 0
-                    for next_layer_neuron in range(self.n_neurons_each_layer[layer+1]):
-            
-                        # Activation of the next layer
-                        delta_next_layer = self.delta_s[layer+1][next_layer_neuron]
-                        
-                        # Weight of the explicit transition between next neuron and current neuron
-                        weight = self.weights[layer][next_layer_neuron][neuron]
-                        
-                        sum_over_next_layer_neurons += delta_next_layer * weight
-                    
-                    # Derivative of the activation function with respect to z (pre-activation)
-                    # da/dz
-                   # print(f"layer={layer}, len(z_s)={len(self.z_s)}, neuron={neuron}")
+            # Initialize gradients
+            layer.dweights = [
+                [0.0 for _ in range(len(prev_activations))]
+                for _ in range(layer.n_neurons_output)
+            ]
+            layer.dbiases = [0.0 for _ in range(layer.n_neurons_output)]
 
-                    z = self.z_s[layer][neuron][0]
-                    deriv_activation = self.activation_hidden_deriv(z)
-                     
-                    delta = sum_over_next_layer_neurons * deriv_activation
-                    self.delta_s[layer].append(delta)
-                    
-        # Now let´s fill in the  self.loss_deriv_of_weights and self.loss_deriv_of_bias
-        for layer in range(self.n_layers-1):
-            for neuron in range(self.n_neurons_each_layer[layer]):
-                for next_layer_neuron in range(self.n_neurons_each_layer[layer+1]): 
-                    self.loss_deriv_of_weights[layer][next_layer_neuron][neuron] = self.a_s[layer][neuron][0] * self.delta_s[layer+1][next_layer_neuron]
-                    self.loss_deriv_of_bias[layer][next_layer_neuron][0] = self.delta_s[layer+1][next_layer_neuron]
-                    
-        
-    def backprop_one_training_example(self, input_vector, y, step = 1000, learning_rate = 0.005, verbose=False):
-        """Apply Chain Rule
-           We want to calculate the derivatives for the Lost in
-           function of the Weights and the biases"""
-        
-        working_y = self._tranpose_matrix(y)
-        
-        # print(f"\n" + "#"*25 + " Init Backprop Matrixes " + "#"*25 + "\n")
-        self._build_backprop_matrix()
-        
-        network_response = self.prediction(input_vector)
-        
-        if verbose:
-            print(f"\n" + "#"*28 + " 1º Network Response " + "#"*28 + "\n")
-            self._print_matrix(network_response)
-            print(f"Error for this cycle is {self.loss_function(working_y, network_response):.4f} \n")
-            
-        for i in range(step):
-            if verbose:
-                print(f"-"*20 + f" Backpropagation cycle number {i} " + "-"*20)
-            
-            # Start by performing backpropagation in the current weights and activations
-            self._backpropagation(working_y)
+            # Compute gradients
+            for j in range(layer.n_neurons_output):
+                for k in range(len(prev_activations)):
+                    layer.dweights[j][k] = layer.delta[j] * prev_activations[k][0]
 
-            if verbose:
-                print(f"\n" + "#"*28 + " 1º Cycle Backprop " + "#"*28)
-                print(f"#"*7 + " Values straight out of backprop, before any product to lr  " + "#"*7 + "\n")
-                self._print_weight_and_bias_matrices(self.loss_deriv_of_weights,self.loss_deriv_of_bias)
-            
-            # Change weights 
-        
-            adjusted_weight = []
-            adjusted_bias = []
-        
-            for matrix in self.loss_deriv_of_weights:
-                adjusted_weight.append(self._product_by_scalar(learning_rate, matrix))
-            
-            for bias in self.loss_deriv_of_bias:
-                adjusted_bias.append(self._product_by_scalar(learning_rate, bias))
-            
-            
-            result_weight_matrix = []
-            result_bias_matrix = []
-            for j in range(self.n_layers -1):
-                result_weight_matrix.append(self._subtract_matrices(self.weights[j],adjusted_weight[j]))
-                result_bias_matrix.append(self._subtract_matrices(self.bias[j],adjusted_bias[j]))
-            
-            if verbose:
-                print(f"\n" + "#"*30 + " New parameters " + "#"*30 + "\n")
-                self._print_weight_and_bias_matrices(result_weight_matrix,result_bias_matrix)
-            
-            self.weights = self._copy_structure(result_weight_matrix)
-            self.bias = self._copy_structure(result_bias_matrix)
-            
-
-            # Reset matrixes
-            for matrix in self.loss_deriv_of_weights:
-                self._fill_with_none(matrix)
-
-            for matrix in self.loss_deriv_of_bias:
-                self._fill_with_none(matrix)
-                
-            
-            network_response = self.prediction(input_vector)
-            if verbose:
-                print(f"\n" + "#"*28 + " 2º Network Response " + "#"*28 + "\n")
-                self._print_matrix(network_response)
-                print(f"Error for this cycle is {self.loss_function(working_y, network_response)}")
-            
+                layer.dbiases[j] = layer.delta[j]
     
-    def backpropagation_batch(self, input_vectors, y_s, steps = 1000, learning_rate = 0.005, verbose=False):
+    def compute_gradients_batch(self, batch_inputs, batch_targets):
         """
-        input_vectors: list of input vectors [[x1_1, x1_2, ...], [x2_1, x2_2, ...], ...]
-        y_s: list of corresponding labels [[y1_1, y1_2, ...], [y2_1, y2_2, ...], ...]
+        Computes averaged gradients over a batch using compute_gradients.
+    
+        batch_inputs: list of input column vectors
+        batch_targets: list of target column vectors
         """
-        # Size of the batch
-        batch_size = len(input_vectors)
-        
-        # Prepare y_s
-        working_y_s = [self._tranpose_matrix(y if isinstance(y, list) else [y]) for y in y_s]
-        
-        # print(f"\n" + "#"*25 + " Init Backprop Matrixes " + "#"*25 + "\n")
-        # Built backprop matrix_structure
-        self._build_backprop_matrix()
-        
-        for step in range(steps):
-            
-            # Restart stroing matrixes
-            store_weight_matrix_for_each_step = []
-            store_bias_matrix_for_each_step = []
-            
-            for input_vector, working_y in zip(input_vectors, working_y_s):
-                
-                # Use the network and compute a prediction
-                network_response = self.prediction([input_vector])
-                
-                # Start by performing backpropagation in the current weights and activations
-                self._backpropagation(working_y)
-                
-                # Add the loss derivative w.r.t weights and bias matrixes to the storage
-                store_weight_matrix_for_each_step.append(self._copy_structure(self.loss_deriv_of_weights))
-                store_bias_matrix_for_each_step.append(self._copy_structure(self.loss_deriv_of_bias))
-                
-                # Clean Matrixes 
-                for matrix in self.loss_deriv_of_weights:
-                    self._fill_with_none(matrix)
-                    
-                for matrix in self.loss_deriv_of_bias:
-                    self._fill_with_none(matrix)
-            
-            # Will hold the averaged weights and bias per layer
-            averaged_weights = []
-            averaged_bias = []
-            
-            for layer in range(self.n_layers - 1):
-                # Collect all weight matrices for this layer across the batch
-                matrices_to_average = [ex[layer] for ex in store_weight_matrix_for_each_step]
-                averaged_weights.append(self._average_matrices(matrices_to_average))
+        n_layers = len(self.layers)
+        batch_size = len(batch_inputs)
 
-                # Collect all bias matrices for this layer across the batch
-                matrices_to_average_bias = [ex[layer] for ex in store_bias_matrix_for_each_step]
-                averaged_bias.append(self._average_matrices(matrices_to_average_bias))
-                
-            # Now averaged_weights and bias has one matrix per layer, ready to update your network
-            
-            adjusted_weight = []
-            adjusted_bias = []
-        
-            for matrix in averaged_weights:
-                adjusted_weight.append(self._product_by_scalar(learning_rate, matrix))
-            
-            for bias in averaged_bias:
-                adjusted_bias.append(self._product_by_scalar(learning_rate, bias))
-            
-            result_weight_matrix = []
-            result_bias_matrix = []
-            
-            for j in range(self.n_layers -1):
-                result_weight_matrix.append(self._subtract_matrices(self.weights[j],adjusted_weight[j]))
-                result_bias_matrix.append(self._subtract_matrices(self.bias[j],adjusted_bias[j]))
-            
-            self.weights = self._copy_structure(result_weight_matrix)
-            self.bias = self._copy_structure(result_bias_matrix)
-                
-            # Compute batch error for monitoring
-            
-            total_error = 0
-            
-            for x, y in zip(input_vectors, y_s):
-    
-                # Compute network prediction
-                pred = self.prediction([x])
-    
-                # Compute loss for this example
-                error = self.loss_function(pred, self._tranpose_matrix(y))
-    
-                # Add to total
-                total_error += error
+        # Initialize accumulators
+        accum_dweights = []
+        accum_dbiases = []
 
-            # Average over batch
-            batch_error = total_error / batch_size
+        for layer in self.layers:
+            accum_dweights.append([
+                [0.0 for _ in range(layer.n_neurons_input)]
+                for _ in range(layer.n_neurons_output)
+            ])
+            accum_dbiases.append([0.0 for _ in range(layer.n_neurons_output)])
+
+        # Accumulate gradients from each sample
+        for x, y in zip(batch_inputs, batch_targets):
+            self.compute_gradients_sample(x, y)
+
+            for i, layer in enumerate(self.layers):
+                for j in range(layer.n_neurons_output):
+                    for k in range(len(layer.dweights[j])):
+                        accum_dweights[i][j][k] += layer.dweights[j][k]
+
+                    accum_dbiases[i][j] += layer.dbiases[j]
+        
+        # Average and store back into layers
+        for i, layer in enumerate(self.layers):
+            for j in range(layer.n_neurons_output):
+                for k in range(len(accum_dweights[i][j])):
+                    accum_dweights[i][j][k] /= batch_size
+
+                accum_dbiases[i][j] /= batch_size
+
+            # Store final averaged gradients
+            layer.dweights = accum_dweights[i]
+            layer.dbiases = accum_dbiases[i]       
+                
+    def train(self, X, Y, epochs=10, learning_rate=0.01, batch_size=1, verbose=True):
+        """
+        Train the ANN using mini-batch gradient descent.
+
+        Parameters:
+        -----------
+        X : list of input column vectors
+            Shape: (n_samples, n_input, 1)
+        Y : list of target column vectors
+            Shape: (n_samples, n_output, 1)
+        epochs : int
+            Number of full passes over the dataset
+        learning_rate : float
+            Step size for gradient descent
+        batch_size : int
+            Number of samples per mini-batch
+        verbose : bool
+            If True, prints loss per epoch
+        """
+        n_samples = len(X)
+        for epoch in range(1, epochs + 1):
+            # Shuffle the dataset at each epoch
+            indices = list(range(n_samples))
+            random.shuffle(indices)
+            X_shuffled = [X[i] for i in indices]
+            Y_shuffled = [Y[i] for i in indices]
+
+            epoch_loss = 0.0
+
+            # Process mini-batches
+            for start_idx in range(0, n_samples, batch_size):
+                end_idx = min(start_idx + batch_size, n_samples)
+                batch_X = X_shuffled[start_idx:end_idx]
+                batch_Y = Y_shuffled[start_idx:end_idx]
+
+                # --- Compute averaged gradients for the batch ---
+                self.compute_gradients_batch(batch_X, batch_Y)
+
+                # --- Update weights and biases for all layers ---
+                for layer in self.layers:
+                    layer.update_parameters(learning_rate)
+
+                # --- Optionally track batch loss ---
+                for x_sample, y_sample in zip(batch_X, batch_Y):
+                    pred = self.prediction(x_sample)
+                    loss = self.LOSS_FUNCTIONS[self.loss_function]["func"](pred, y_sample)
+                    epoch_loss += loss
+
+            # Average loss over samples
+            epoch_loss /= n_samples
+
             if verbose:
-                print(f"\n{'#'*20} Network Response after cycle: {step} {'#'*20}\n")
-                print(f"Batch Error for this cycle: {batch_error:.6f}\n")
-    
+                print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f}")
+        

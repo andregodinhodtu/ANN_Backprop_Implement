@@ -85,6 +85,7 @@ class ANN_Layer():
         self.a_s = []
         
         # Backpropagation
+        self.activation_derivatives = []
         self.delta = []  # to store error signal for backprop
         
     def __mul__(self, input_vector):
@@ -190,6 +191,38 @@ class ANN_Layer():
         self.forward(input_vector)           # compute pre-activation z_s
         activated_output = self._apply_activation()  # compute and store a_s
         return activated_output
+        
+    @property
+    def weights_matrix(self):
+        """Getter for weights"""
+        return self.weights
+
+    @weights_matrix.setter
+    def weights_matrix(self, new_weights):
+        """Setter for weights"""
+        if not isinstance(new_weights, list) or not all(isinstance(row, list) for row in new_weights):
+            raise TypeError("Weights must be a list of lists")
+        if len(new_weights) != self.n_neurons_output:
+            raise ValueError(f"Weights must have {self.n_neurons_output} rows")
+        if any(len(row) != self.n_neurons_input for row in new_weights):
+            raise ValueError(f"Each weight row must have {self.n_neurons_input} columns")
+        self.weights = new_weights
+
+    @property
+    def biases_vector(self):
+        """Getter for biases"""
+        return self.biases
+
+    @biases_vector.setter
+    def biases_vector(self, new_biases):
+        """Setter for biases"""
+        if not isinstance(new_biases, list) or not all(isinstance(row, list) for row in new_biases):
+            raise TypeError("Biases must be a list of lists")
+        if len(new_biases) != self.n_neurons_output:
+            raise ValueError(f"Biases must have {self.n_neurons_output} rows")
+        if any(len(row) != 1 for row in new_biases):
+            raise ValueError("Each bias row must have exactly 1 column")
+        self.biases = new_biases
         
     def _print_matrix(self, matrix):
         """
@@ -298,5 +331,51 @@ class ANN_Layer():
         else:
             raise ValueError("Invalid argument for 'what'. Choose 'weights', 'biases', or 'output'.")
 
+    def compute_activation_derivatives(self):
+        """
+        Compute the derivative of the activation function for each neuron
+        in this layer and store them in self.activation_derivatives.
+    
+        Returns:
+        --------
+        list of floats
+            Activation derivatives for this layer.
+        """
+        self.activation_derivatives = []
+        deriv_func = self.ACTIVATION_FUNCTIONS[self.activation_function]['deriv']
+        for z in self.z_s:
+            # z is a single-element list [[value]], so take z[0]
+            self.activation_derivatives.append(deriv_func(z[0]))
 
+        return self.activation_derivatives
+        
+    def update_parameters(self, learning_rate):
+        """
+        Update the layer's weights and biases using the stored gradients
+        and then clear all intermediate variables associated with the previous forward/backward pass.
+
+        Parameters:
+        -----------
+        learning_rate : float
+            Learning rate for gradient descent.
+        """
+        if not hasattr(self, "dweights") or not hasattr(self, "dbiases"):
+            raise ValueError("Gradients not computed. Run compute_gradients first.")
+
+        # --- Update weights ---
+        for i in range(self.n_neurons_output):
+            for j in range(self.n_neurons_input):
+                self.weights[i][j] -= learning_rate * self.dweights[i][j]
+
+        # --- Update biases ---
+        for i in range(self.n_neurons_output):
+            self.biases[i][0] -= learning_rate * self.dbiases[i]
+
+        # --- Clean up temporary variables ---
+        self.dweights = None
+        self.dbiases = None
+        self.delta = None
+        self.activation_derivatives = None
+        self.z_s = None
+        self.a_s = None
 
