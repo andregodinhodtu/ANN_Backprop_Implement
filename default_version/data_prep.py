@@ -42,15 +42,22 @@ def parse_input(filename, start=None, end=None):
     
     usage: parse_input(filename, 0, 100)
         returns input_list and label_list with length 100, from lines 0 to 99 """
-    
+
     input_list = []
     label_list = []
+    
     for value, label in iterate_input(filename=filename, start=start, end=end):
+        
+        # Convert input to column vector
+        value = [[val] for val in value]
+        
+        # Convert label to column vector
+        label = [[val] for val in label]
+        
         input_list.append(value)
-        label_list.append([label])
+        label_list.append(label)
 
     return input_list, label_list
-
 
 
 def iterate_input(filename, start=None, end=None):

@@ -3,6 +3,7 @@
 ##################################
 import random
 from ANN_layer import ANN_Layer
+import math
 
 class ANN():
     
@@ -37,8 +38,10 @@ class ANN():
         }
     }
     
+
     @classmethod
-    def log(cls, x, iterations=100):
+    def log(cls, x):
+        return math.log(x)
         """Compute natural log using Newton-Raphson method for ln(x)"""
         if x <= 0:
             raise ValueError("log undefined for non-positive numbers")
@@ -93,7 +96,7 @@ class ANN():
             # Number of neurons in this layer
             n_output = self.n_neurons_each_layer[i+1]
             # Choose activation
-            act = self.activation_hidden if i == self.n_layers-2 else self.activation_output
+            act = self.activation_output if i == self.n_layers - 2 else self.activation_hidden
             
             # Create ANN_Layer
             layer = ANN_Layer(
@@ -216,19 +219,11 @@ class ANN():
                 layer.dbiases[j] = layer.delta[j]
     
     def compute_gradients_batch(self, batch_inputs, batch_targets):
-        """
-        Computes averaged gradients over a batch using compute_gradients.
-    
-        batch_inputs: list of input column vectors
-        batch_targets: list of target column vectors
-        """
-        n_layers = len(self.layers)
         batch_size = len(batch_inputs)
 
-        # Initialize accumulators
+        # Initialize accumulators using n_neurons_input (safe at this point)
         accum_dweights = []
         accum_dbiases = []
-
         for layer in self.layers:
             accum_dweights.append([
                 [0.0 for _ in range(layer.n_neurons_input)]
@@ -236,30 +231,24 @@ class ANN():
             ])
             accum_dbiases.append([0.0 for _ in range(layer.n_neurons_output)])
 
-        # Accumulate gradients from each sample
         for x, y in zip(batch_inputs, batch_targets):
             self.compute_gradients_sample(x, y)
-
             for i, layer in enumerate(self.layers):
                 for j in range(layer.n_neurons_output):
                     for k in range(len(layer.dweights[j])):
                         accum_dweights[i][j][k] += layer.dweights[j][k]
-
                     accum_dbiases[i][j] += layer.dbiases[j]
-        
-        # Average and store back into layers
+
         for i, layer in enumerate(self.layers):
             for j in range(layer.n_neurons_output):
                 for k in range(len(accum_dweights[i][j])):
                     accum_dweights[i][j][k] /= batch_size
-
                 accum_dbiases[i][j] /= batch_size
-
-            # Store final averaged gradients
             layer.dweights = accum_dweights[i]
-            layer.dbiases = accum_dbiases[i]       
-                
-    def train(self, X, Y, epochs=10, learning_rate=0.01, batch_size=1, verbose=True):
+            layer.dbiases = accum_dbiases[i]      
+        
+    def train(self, X, Y, epochs=10, learning_rate=0.01, batch_size=1, 
+              verbose=True, lr_decay=0.95, decay_every=20):  # ← add these params
         """
         Train the ANN using mini-batch gradient descent.
 
@@ -279,8 +268,16 @@ class ANN():
             If True, prints loss per epoch
         """
         n_samples = len(X)
+        current_lr = learning_rate  # ← track current lr
+
         for epoch in range(1, epochs + 1):
-            # Shuffle the dataset at each epoch
+        
+            # Decay learning rate every N epochs
+            if epoch > 1 and (epoch - 1) % decay_every == 0:
+                current_lr *= lr_decay
+                if verbose:
+                    print(f"  [LR decayed to {current_lr:.6f}]")
+
             indices = list(range(n_samples))
             random.shuffle(indices)
             X_shuffled = [X[i] for i in indices]
@@ -288,26 +285,21 @@ class ANN():
 
             epoch_loss = 0.0
 
-            # Process mini-batches
             for start_idx in range(0, n_samples, batch_size):
                 end_idx = min(start_idx + batch_size, n_samples)
                 batch_X = X_shuffled[start_idx:end_idx]
                 batch_Y = Y_shuffled[start_idx:end_idx]
 
-                # --- Compute averaged gradients for the batch ---
                 self.compute_gradients_batch(batch_X, batch_Y)
 
-                # --- Update weights and biases for all layers ---
                 for layer in self.layers:
-                    layer.update_parameters(learning_rate)
+                    layer.update_parameters(current_lr)  # ← use current_lr
 
-                # --- Optionally track batch loss ---
                 for x_sample, y_sample in zip(batch_X, batch_Y):
                     pred = self.prediction(x_sample)
                     loss = self.LOSS_FUNCTIONS[self.loss_function]["func"](pred, y_sample)
                     epoch_loss += loss
 
-            # Average loss over samples
             epoch_loss /= n_samples
 
             if verbose:
