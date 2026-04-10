@@ -10,16 +10,18 @@ class ANN_Layer():
     EULER_NUMBER = 2.718281828459045
     
     ACTIVATION_FUNCTIONS = {
-        # *** change from relu to sigmoid
         "relu": {
             "func": lambda x: max(0, x),
             "deriv": lambda x: 1 if x > 0 else 0
         },
         "sigmoid": {
             "func": lambda x: 1 / (1 + ANN_Layer.EULER_NUMBER ** (-x)),
-            # deriv can be optimized because digmoid is being computed twice
             "deriv": lambda x: (1 / (1 + ANN_Layer.EULER_NUMBER ** (-x))) *
-                           (1 - (1 / (1 + ANN_Layer.EULER_NUMBER ** (-x))))
+                               (1 - (1 / (1 + ANN_Layer.EULER_NUMBER ** (-x))))
+        },
+        "leaky_relu": {
+            "func": lambda x: x if x > 0 else 0.01 * x,
+            "deriv": lambda x: 1 if x > 0 else 0.01
         }
     }
     
@@ -349,34 +351,35 @@ class ANN_Layer():
 
         return self.activation_derivatives
         
-    def update_parameters(self, learning_rate):
+    def update_parameters(self, learning_rate, l2_lambda=0.0):
         """
         Update the layer's weights and biases using the stored gradients
-        and then clear all intermediate variables associated with the previous forward/backward pass.
+        with optional L2 regularization, then clear intermediate variables.
 
         Parameters:
         -----------
         learning_rate : float
             Learning rate for gradient descent.
+        l2_lambda : float
+            L2 regularization coefficient (weight decay). Default 0.0 (no regularization).
         """
         if not hasattr(self, "dweights") or not hasattr(self, "dbiases"):
             raise ValueError("Gradients not computed. Run compute_gradients first.")
 
-        # --- Update weights ---
-        new_weights = [
-            [self.weights[i][j] - learning_rate * self.dweights[i][j]
-             for j in range(self.n_neurons_input)]
+        # --- Update weights with L2 regularization ---
+        self.weights = [
+            [
+                self.weights[i][j] - learning_rate * (self.dweights[i][j] + l2_lambda * self.weights[i][j])
+                for j in range(self.n_neurons_input)
+            ]
             for i in range(self.n_neurons_output)
         ]
 
-        # --- Update biases ---
-        new_biases = [
+        # --- Update biases (no regularization) ---
+        self.biases = [
             [self.biases[i][0] - learning_rate * self.dbiases[i]]
             for i in range(self.n_neurons_output)
         ]
-
-        self.weights_matrix = new_weights
-        self.biases_vector = new_biases
 
         # --- Clean up temporary variables ---
         self.dweights = None

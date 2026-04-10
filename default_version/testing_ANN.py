@@ -210,7 +210,7 @@ def test_relu_gradient_step():
     Prints every step to verify correctness.
     """
 
-    # 1️⃣ Small network: 2 → 2 → 1
+    # Small network: 2 → 2 → 1
     ann = ANN(
         n_layers=3,
         n_neurons_each_layer=[2, 2, 1],
@@ -219,7 +219,7 @@ def test_relu_gradient_step():
         loss_function="MSE"
     )
 
-    # 2️⃣ Manually set weights for deterministic behavior
+    # Manually set weights for deterministic behavior
     ann.layers[0].weights = [
         [0.2, -0.4],
         [0.7, 0.1]
@@ -231,11 +231,11 @@ def test_relu_gradient_step():
     ]
     ann.layers[1].biases = [[0.0]]
 
-    # 3️⃣ Input and target
+    # Input and target
     x = [[1.0], [2.0]]
     y = [[1.0]]
 
-    # 4️⃣ Forward pass BEFORE update
+    # Forward pass BEFORE update
     print("\n--- FORWARD PASS (BEFORE) ---")
     output_before = ann.prediction(x)
     print("Output:", output_before)
@@ -243,7 +243,7 @@ def test_relu_gradient_step():
     loss_before = ANN.LOSS_FUNCTIONS["MSE"]["func"](output_before, y)
     print("Loss:", loss_before)
 
-    # 5️⃣ Compute gradients
+    # Compute gradients
     ann.compute_gradients_sample(x, y)
 
     print("\n--- GRADIENTS ---")
@@ -255,7 +255,7 @@ def test_relu_gradient_step():
             print(row)
         print("dBiases:", layer.dbiases)
 
-    # 6️⃣ Gradient descent step
+    # Gradient descent step
     lr = 0.1
 
     for layer in ann.layers:
@@ -264,7 +264,7 @@ def test_relu_gradient_step():
                 layer.weights[i][j] -= lr * layer.dweights[i][j]
             layer.biases[i][0] -= lr * layer.dbiases[i]
 
-    # 7️⃣ Forward pass AFTER update
+    # Forward pass AFTER update
     print("\n--- FORWARD PASS (AFTER) ---")
     output_after = ann.prediction(x)
     print("Output:", output_after)
@@ -272,7 +272,7 @@ def test_relu_gradient_step():
     loss_after = ANN.LOSS_FUNCTIONS["MSE"]["func"](output_after, y)
     print("Loss:", loss_after)
 
-    # 8️⃣ Check improvement
+    # Check improvement
     print("\n--- CHECK ---")
     print("Loss before:", loss_before)
     print("Loss after :", loss_after)
@@ -288,7 +288,7 @@ def test_batch_gradient_step():
     Prints every step to verify correctness.
     """
     
-    # 1️⃣ Small network: 2 → 2 → 1
+    # Small network: 2 → 2 → 1
     ann = ANN(
         n_layers=3,
         n_neurons_each_layer=[2, 2, 1],
@@ -297,7 +297,7 @@ def test_batch_gradient_step():
         loss_function="MSE"
     )
     
-    # 2️⃣ Manually set weights for deterministic behavior
+    # Manually set weights for deterministic behavior
     ann.layers[0].weights = [
         [0.2, -0.4],
         [0.7, 0.1]
@@ -309,7 +309,7 @@ def test_batch_gradient_step():
     ]
     ann.layers[1].biases = [[0.0]]
     
-    # 3️⃣ Batch input and targets
+    # Batch input and targets
     X_batch = [
         [[1.0], [2.0]],
         [[0.5], [-1.0]]
@@ -319,7 +319,7 @@ def test_batch_gradient_step():
         [[0.0]]
     ]
     
-    # 4️⃣ Forward pass BEFORE update
+    # Forward pass BEFORE update
     print("\n--- FORWARD PASS (BEFORE) ---")
     for x, y in zip(X_batch, Y_batch):
         output = ann.prediction(x)
@@ -329,7 +329,7 @@ def test_batch_gradient_step():
     loss_before = sum(ANN.LOSS_FUNCTIONS["MSE"]["func"](ann.prediction(x), y) for x, y in zip(X_batch, Y_batch))
     print("Average Loss:", loss_before / len(X_batch))
     
-    # 5️⃣ Compute batch gradients
+    # Compute batch gradients
     ann.compute_gradients_batch(X_batch, Y_batch)
     
     print("\n--- BATCH GRADIENTS ---")
@@ -340,7 +340,7 @@ def test_batch_gradient_step():
             print(row)
         print("dBiases:", layer.dbiases)
     
-    # 6️⃣ Gradient descent step
+    # Gradient descent step
     lr = 0.1
     for layer in ann.layers:
         for i in range(layer.n_neurons_output):
@@ -348,7 +348,7 @@ def test_batch_gradient_step():
                 layer.weights[i][j] -= lr * layer.dweights[i][j]
             layer.biases[i][0] -= lr * layer.dbiases[i]
     
-    # 7️⃣ Forward pass AFTER update
+    # Forward pass AFTER update
     print("\n--- FORWARD PASS (AFTER) ---")
     for x, y in zip(X_batch, Y_batch):
         output = ann.prediction(x)
@@ -358,7 +358,7 @@ def test_batch_gradient_step():
     loss_after = sum(ANN.LOSS_FUNCTIONS["MSE"]["func"](ann.prediction(x), y) for x, y in zip(X_batch, Y_batch))
     print("Average Loss:", loss_after / len(X_batch))
     
-    # 8️⃣ Check improvement
+    # Check improvement
     print("\n--- CHECK ---")
     if loss_after < loss_before:
         print("✅ SUCCESS: Loss decreased after batch gradient step")
@@ -374,7 +374,7 @@ def test_layer_update_parameters():
     - Prints everything step by step to verify
     """
 
-    # --- 1️⃣ Create small ANN ---
+    # --- Create small ANN ---
     ann = ANN(
         n_layers=3,
         n_neurons_each_layer=[2, 2, 1],
@@ -383,28 +383,28 @@ def test_layer_update_parameters():
         loss_function="MSE"
     )
 
-    # --- 2️⃣ Set deterministic weights and biases ---
+    # --- Set deterministic weights and biases ---
     ann.layers[0].weights = [[0.2, -0.4], [0.7, 0.1]]
     ann.layers[0].biases = [[0.0], [0.0]]
 
     ann.layers[1].weights = [[0.6, -0.1]]
     ann.layers[1].biases = [[0.0]]
 
-    # --- 3️⃣ Input and target ---
+    # --- Input and target ---
     x = [[1.0], [2.0]]
     y = [[1.0]]
 
-    # --- 4️⃣ Forward pass before update ---
+    # --- Forward pass before update ---
     print("\n--- FORWARD PASS BEFORE UPDATE ---")
     output_before = ann.prediction(x)
     print("Output:", output_before)
     loss_before = ANN.LOSS_FUNCTIONS["MSE"]["func"](output_before, y)
     print("Loss:", loss_before)
 
-    # --- 5️⃣ Compute gradients for single sample ---
+    # --- Compute gradients for single sample ---
     ann.compute_gradients_sample(x, y)
 
-    # --- 6️⃣ Print gradients ---
+    # --- Print gradients ---
     print("\n--- GRADIENTS ---")
     for i, layer in enumerate(ann.layers):
         print(f"\nLayer {i+1}")
@@ -417,19 +417,19 @@ def test_layer_update_parameters():
     for layer in ann.layers:
         layer.update_parameters(lr)
 
-    # --- 8️⃣ Check that z_s, a_s, and gradients are cleared ---
+    # --- Check that z_s, a_s, and gradients are cleared ---
     print("\n--- CHECK CLEANUP ---")
     for i, layer in enumerate(ann.layers):
         print(f"Layer {i+1}: z_s={layer.z_s}, a_s={layer.a_s}, dweights={layer.dweights}, dbiases={layer.dbiases}")
 
-    # --- 9️⃣ Forward pass after update ---
+    # --- Forward pass after update ---
     print("\n--- FORWARD PASS AFTER UPDATE ---")
     output_after = ann.prediction(x)
     print("Output:", output_after)
     loss_after = ANN.LOSS_FUNCTIONS["MSE"]["func"](output_after, y)
     print("Loss:", loss_after)
 
-    # --- 10️⃣ Verify improvement ---
+    # --- Verify improvement ---
     print("\n--- LOSS IMPROVEMENT ---")
     if loss_after < loss_before:
         print("✅ SUCCESS: Loss decreased")
@@ -442,7 +442,7 @@ def test_train_function():
     Prints loss per epoch and shows weight/bias updates.
     """
 
-    # 1️⃣ Create a small network: 2 → 2 → 1
+    # Create a small network: 2 → 2 → 1
     ann = ANN(
         n_layers=3,
         n_neurons_each_layer=[2, 2, 1],
@@ -451,7 +451,7 @@ def test_train_function():
         loss_function="MSE"
     )
 
-    # 2️⃣ Manually set weights and biases for deterministic behavior
+    # Manually set weights and biases for deterministic behavior
     ann.layers[0].weights = [
         [0.2, -0.4],
         [0.7, 0.1]
@@ -463,7 +463,7 @@ def test_train_function():
     ]
     ann.layers[1].biases = [[0.0]]
 
-    # 3️⃣ Toy dataset
+    # Toy dataset
     X = [
         [[1.0], [2.0]],
         [[0.5], [-1.0]],
@@ -475,11 +475,11 @@ def test_train_function():
         [[1.0]]
     ]
 
-    # 4️⃣ Train with batch_size=1 to see individual steps
+    # Train with batch_size=1 to see individual steps
     print("\n--- TRAINING START ---\n")
     ann.train(X, Y, epochs=10, learning_rate=0.1, batch_size=1, verbose=True)
 
-    # 5️⃣ Print final weights and biases
+    # Print final weights and biases
     print("\n--- FINAL WEIGHTS AND BIASES ---")
     for i, layer in enumerate(ann.layers):
         print(f"\nLayer {i+1}:")

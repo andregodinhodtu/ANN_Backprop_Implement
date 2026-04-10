@@ -27,14 +27,6 @@ class ANN():
     @classmethod
     def log(cls, x):
         return math.log(x)
-        """Compute natural log using Newton-Raphson method for ln(x)"""
-        if x <= 0:
-            raise ValueError("log undefined for non-positive numbers")
-        
-        y = x - 1.0  # initial guess
-        for _ in range(iterations):
-            y = y - (cls.EULER_NUMBER**y - x) / (cls.EULER_NUMBER**y)
-        return y
         
     def __init__(self, n_layers, n_neurons_each_layer, activation_hidden="relu",
                  activation_output="sigmoid", loss_function="MSE"):
@@ -233,7 +225,7 @@ class ANN():
             layer.dbiases = accum_dbiases[i]      
         
     def train(self, X, Y, epochs=10, learning_rate=0.01, batch_size=1, 
-              verbose=True, lr_decay=0.95, decay_every=20):  # ← add these params
+              verbose=True, lr_decay=0.95, decay_every=20, l2_lambda = 0):  # ← add these params
         """
         Train the ANN using mini-batch gradient descent.
 
@@ -278,7 +270,7 @@ class ANN():
                 self.compute_gradients_batch(batch_X, batch_Y)
 
                 for layer in self.layers:
-                    layer.update_parameters(current_lr)  # ← use current_lr
+                    layer.update_parameters(current_lr, l2_lambda)  # ← use current_lr
 
                 for x_sample, y_sample in zip(batch_X, batch_Y):
                     pred = self.prediction(x_sample)
