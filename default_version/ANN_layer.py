@@ -363,13 +363,20 @@ class ANN_Layer():
             raise ValueError("Gradients not computed. Run compute_gradients first.")
 
         # --- Update weights ---
-        for i in range(self.n_neurons_output):
-            for j in range(self.n_neurons_input):
-                self.weights[i][j] -= learning_rate * self.dweights[i][j]
+        new_weights = [
+            [self.weights[i][j] - learning_rate * self.dweights[i][j]
+             for j in range(self.n_neurons_input)]
+            for i in range(self.n_neurons_output)
+        ]
 
         # --- Update biases ---
-        for i in range(self.n_neurons_output):
-            self.biases[i][0] -= learning_rate * self.dbiases[i]
+        new_biases = [
+            [self.biases[i][0] - learning_rate * self.dbiases[i]]
+            for i in range(self.n_neurons_output)
+        ]
+
+        self.weights_matrix = new_weights
+        self.biases_vector = new_biases
 
         # --- Clean up temporary variables ---
         self.dweights = None
