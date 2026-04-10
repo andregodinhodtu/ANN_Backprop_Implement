@@ -46,8 +46,8 @@ def train_real_data():
 
     ann.train(
         X, Y,
-        epochs=300,          # more epochs since it's still descending
-        learning_rate=0.05,
+        epochs=400,          # more epochs since it's still descending
+        learning_rate=0.1,
         batch_size=32,
         verbose=True,
         lr_decay=0.95,       # multiply lr by 0.95 every 20 epochs

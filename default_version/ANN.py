@@ -24,7 +24,6 @@ class ANN():
         }
     }
     
-
     @classmethod
     def log(cls, x):
         return math.log(x)
