@@ -120,14 +120,14 @@ class ANN_Layer():
             np.random.seed(seed)  # Set seed for reproducibility
 
         # Weight matrix: shape (n_neurons_output, n_neurons_input)
-        self.weights = np.random.unifrom(-0.5, 0.5, (self.n_neurons_output, self.n_neurons_input))
+        self.weights = np.random.uniform(0, 1, (self.n_neurons_output, self.n_neurons_input))
 
         # Bias vector: shape (n_neurons_output, 1)
-        self.biases = np.zeros(self.n_neurons_output, 1)
+        self.biases = np.zeros((self.n_neurons_output, 1))
 
 
     
-    def forward(self, input_vector): # fix to already apply activation
+    def forward(self, input_vector):
         
         # ensure input is a 2D np array
         x = np.array(input_vector)
@@ -158,7 +158,7 @@ class ANN_Layer():
         if self.activation_function == "relu":
             self.activation_derivatives = self.relu_deriv(self.a_s)
         elif self.activation_function == "sigmoid":
-            self.activation_derivatives = self.sigmoid_deriv_deriv(self.a_s)
+            self.activation_derivatives = self.sigmoid_deriv(self.a_s)
         else:
             raise ValueError("Unknown activation function")
 

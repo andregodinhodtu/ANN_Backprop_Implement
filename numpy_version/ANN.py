@@ -1,24 +1,13 @@
 import random
 import numpy as np
+from ANN_layer import ANN_Layer
 
 class ANN():
 
     """ANN algorithm with backpropagation made specifically for binary classification.
     This version utilizes NumPy for maximum efficiency and clarity. """
 
-
-
-    # -----------------------------------------------------------------
-
-    # sigmoid for binary classification problem
-    @staticmethod
-    def sigmoid(x):
-        return 1.0 / (1.0 + np.exp(-x))
-
-    @staticmethod
-    def sigmoid_deriv(a):
-        return a * (1.0 - a)
-    
+    # -----------------------------------------------------------------------------
 
     # binary cross entropy for binary classification problem
     # y = true binary labels
@@ -38,77 +27,162 @@ class ANN():
 
 
     # --------------------------------------------------------------------------
+    # INITIALIZATION
+
+
+    def __init__(self, n_layers, n_neurons_each_layer, activation_hidden="relu",
+                 activation_output="sigmoid", loss_function="mse"):
+
+        """
+        Build a feedforward neural network with n_layers.
     
+        Parameters:
+        -----------
+        n_layers : int
+            Number of layers (including output).
+        n_neurons_each_layer : list of ints
+            Number of neurons in each layer. Length must equal n_layers.
+        activation_hidden : str
+            Activation function for hidden layers.
+        activation_output : str
+            Activation function for the output layer.
+        loss_function : str
+            Loss function to use.
+        """
 
-
-    # constructor
-    def __init__(self, n_layers, n_neurons_each_layer): 
-
-        # input check
-        if not isinstance(n_layers, int):
-            raise TypeError("n_layers must be an Integer")
-        if not isinstance(n_neurons_each_layer, list):
-            raise TypeError("n_neurons_each_layer should be a list")
-        if not all(isinstance(n, int) for n in n_neurons_each_layer):
-            raise TypeError("All elements in n_neurons_each_layer must be integers")
-        
-        # value check
+              # Input validation
         if n_layers <= 0:
             raise ValueError("n_layers must be > 0")
         if len(n_neurons_each_layer) != n_layers:
-           raise ValueError("Length of n_neurons_each_layer must equal n_layers") 
-        
-        # init settings
-        self.n_layers =  n_layers
-        self.n_neurons_each_layer =  n_neurons_each_layer
+            raise ValueError("Length of n_neurons_each_layer must equal n_layers")
+    
+        # Store activation functions and loss
+        self.n_layers = n_layers
+        self.n_neurons_each_layer = n_neurons_each_layer
+        self.activation_hidden = activation_hidden
+        self.activation_output = activation_output
+        self.loss_function = loss_function
 
-        # init arrays
-        self.weights = [
-            # array shape of n_out, n_in for all layers except 1st
-            # filled with random values between -0.5 and 0.5
-            np.random.uniform(-0.5, 0.5, (n_out, n_in))
-            for n_in, n_out in zip(n_neurons_each_layer[:-1], n_neurons_each_layer[1:])
-        ]
-        self.biases = [
-            #for each layer after 1st the bias is set to 0.01
-            np.full((n_out, 1), 0.01)
-            for n_out in n_neurons_each_layer[1:]
-        ]
+        self.layers = []
+        self._build_ANN()
+        
+
+    def _build_ANN(self):
+        """Private method to construct the layers of the network with Numpy-based ANN Layer."""
+        for i in range(self.n_layers -1):
+            # Number of inputs for this layer
+            n_input = self.n_neurons_each_layer[i]
+            # Number of neurons in this layer
+            n_output = self.n_neurons_each_layer[i+1]
+            # Choose activation
+            act = self.activation_output if i == self.n_layers - 2 else self.activation_hidden
+            
+            # Create ANN_Layer
+            layer = ANN_Layer(
+                n=i+1,
+                n_neurons_input=n_input,
+                n_neurons_output=n_output,
+                activation_function=act
+            )
+            
+            # Initialize weights and biases (optional fixed seed)
+            layer.initialize_weights_bias(seed=42 +i)
+            
+            # Add to layers list
+            self.layers.append(layer)
+
+
+    # ----------------------------------------------------------------------------
+    # PREDICTION
+            
+    def prediction(self, input_vector):
+        """
+        Make a forward pass through the entire ANN.
+
+        Parameters:
+        -----------
+        input_vector : list of lists
+            Input column vector (shape: n_input x 1).
+
+        Returns:
+        --------
+        list of lists
+            Output of the last layer after activation.
+        """
+        working_vector = input_vector
+
+        # Forward pass through all layers
+        for layer in self.layers:
+            # Use the layer's __call__ to do forward pass and activation
+            working_vector = layer(working_vector)
+
+        return working_vector
     
 
-    def predict(self, input_vector):
+    # -----------------------------------------------------------------------------
+    # BACPROPAGATION
 
-        # input as a column vector
-        a = np.array(input_vector).reshape(-1, 1)
+    # chain rule:
+    # 
+    #  delta of the node = deriv of the loss function for this node   * derivative of act.func(z of this node)
+    # 
+    #  derivative of a weight =  delta * output a of the connected node in a previous layer
+    #  derivative of a bias = delta
+
+       
+    def _compute_deltas(self, y):
+        """
+        Compute delta values for each layer in the network for backpropagation.
+        Stores them in each layer's `.delta` attribute.
+
+        Parameters:
+        -----------
+        y : list of lists or np.array
+            Target output column vector (shape: n_output x 1)
+        """
+
+        y = np.array(y)
+
+        # first: output layer 
+        output_layer = self.layers[-1]
+        output_layer.compute_activation_derivatives()
+        # activations of output layer
+        a = output_layer.a_s
+
+        # compute loss derivative
+        if self.loss_function == "mse":
+            loss_deriv = 2*(a - y)
+        elif self.loss_function in ["bse", "binarycrossentropy", "binary_cross_entropy"]:
+            loss_deriv = self.binary_cross_entropy_deriv(y, a)
+        else: 
+            raise ValueError("Unknown loss function.")
         
-        # storage for pre-activation and activation values
-        self.z_s = []
-        self.a_s = [a] # node activation (initialized with input values)
+        # save delta
+        output_layer.delta = loss_deriv * output_layer.activation_derivatives
         
-        # forward pass
-        for W, b in zip(self.weights, self.biases):
-            # over weights and bias in each layer
-            z = np.dot(W, a) + b    #a is the current activation value
-            self.z_s.append(z)
+        # backwards loop through hidden layers
+        for i in range(len(self.layers) - 2, -1, -1):
+            layer = self.layers[i]
+            next_layer = self.layers[i+1]
+            layer.compute_activation_derivatives()
 
-            # update and save activation
-            a = self.sigmoid(z)
-            self.a_s.append(a)
-            print(self.a_s)
+            # next_layer.weights: shape (n_neurons_next_layer, n_neurons_this_layer)
+            # next_layer.delta: shape (n_neurons_next_layer, 1)
+            # next_layer.weights[k, j] = weight of neuron j from this layer to neuron k in next
+            # sum (w_this-next * delta_next) for all neurons
 
-        # output = last activated value
-        return a
-
-
-
-# test
-ann = ANN(3, [5, 3, 1])
-ann.predict([1, 2, 3, 4, 1])
-
-
-
+            weighted_sum = np.dot(next_layer.weights.T, next_layer.delta)
+            layer.delta = weighted_sum * layer.activation_derivatives
+            print(f"{i}: {layer.delta}")
+        
 
 
 
 
     
+# test 
+
+ann = ANN(5, [10, 3, 2, 2, 1]) #activation_hidden="sigmoid")
+x = ann.prediction([[1],[2], [1],[2],[1],[2],[1],[2],[6],[3] ])
+print(x)
+ann._compute_deltas([[100]])
