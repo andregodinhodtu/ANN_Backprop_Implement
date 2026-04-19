@@ -120,7 +120,7 @@ class ANN_Layer():
             np.random.seed(seed)  # Set seed for reproducibility
 
         # Weight matrix: shape (n_neurons_output, n_neurons_input)
-        self.weights = np.random.uniform(0, 1, (self.n_neurons_output, self.n_neurons_input))
+        self.weights = np.random.uniform(-0.5, 0.5, (self.n_neurons_output, self.n_neurons_input))
 
         # Bias vector: shape (n_neurons_output, 1)
         self.biases = np.zeros((self.n_neurons_output, 1))

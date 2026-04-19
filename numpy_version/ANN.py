@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import data_prep_np
 from ANN_layer import ANN_Layer
 
 class ANN():
@@ -23,7 +24,7 @@ class ANN():
     @staticmethod
     def binary_cross_entropy_deriv(y, y_pred):
         y_pred = np.clip(y_pred, 1e-12, 1 - 1e-12)
-        return (-y / y_pred + (1 - y) / (1 - y_pred)) / y.size
+        return (-y / y_pred) + ((1 - y) / (1 - y_pred))
 
 
     # --------------------------------------------------------------------------
@@ -158,7 +159,7 @@ class ANN():
             raise ValueError("Unknown loss function.")
         
         # save delta
-        output_layer.delta = loss_deriv * output_layer.activation_derivatives
+        output_layer.delta = (loss_deriv * output_layer.activation_derivatives).reshape(-1,1)
         
         # backwards loop through hidden layers
         for i in range(len(self.layers) - 2, -1, -1):
@@ -172,17 +173,142 @@ class ANN():
             # sum (w_this-next * delta_next) for all neurons
 
             weighted_sum = np.dot(next_layer.weights.T, next_layer.delta)
-            layer.delta = weighted_sum * layer.activation_derivatives
-            print(f"{i}: {layer.delta}")
+            layer.delta = (weighted_sum * layer.activation_derivatives).reshape(-1,1) # ensure correct shape
+        
+
+    def compute_gradients_sample(self, input_vector, target):
+        """
+        Computes gradients (dweights and dbiases) for a single training sample using NumPy.
+        
+        input_vector: input column vector (shape: n_input x 1, as np.array or list of lists)
+        target: target output column vector (shape: n_output x 1, as np.array or list of lists)
+        """
+
+        # input must be np.array
+        input_vector = np.array(input_vector)
+
+        # forward pass
+        self.prediction(input_vector)
+
+        # backward pass
+        self._compute_deltas(target)
+
+        # gradients for each layer
+        for i, layer in enumerate(self.layers):
+            # determine previous activations
+            if i == 0:
+                prev_a = input_vector
+            else:
+                prev_a = self.layers[i-1].a_s
+
+            # get gradients
+            layer.dweights = np.dot(layer.delta, prev_a.T) # W = delta * prev_a
+            layer.dbiases = layer.delta # B = delta
+           # print(layer.dweights.shape)
+           # print(layer.dbiases.shape)
+            
+
+    def compute_gradients_batch(self, batch_inputs, batch_targets):
+
+        """
+        Computes average gradients (dweights and dbiases) for a batch of samples using NumPy.
+
+        batch_inputs: shape (batch_size, n_input, 1)
+        batch_targets: shape (batch_size, n_output, 1)
+        """
+
+        # gradient storage for all layers
+        accum_dweights = [np.zeros_like(layer.weights) for layer in self.layers]
+        accum_dbiases = [np.zeros_like(layer.biases) for layer in self.layers]
+        
+        # compute gradients per layer
+        for x, y in zip(batch_inputs, batch_targets):
+            self.compute_gradients_sample(x, y)
+
+            
+            # save each layers dweights and dbiases
+            for i, layer in enumerate(self.layers):
+                accum_dweights[i] += layer.dweights
+                accum_dbiases[i] += layer.dbiases
+
+        # average results per layer
+        batch_size = len(batch_inputs)
+        for i, layer in enumerate(self.layers):
+            layer.dweights = accum_dweights[i] / batch_size
+            layer.dbiases = accum_dbiases[i] / batch_size
+        
+
+# -----------------------------------------------------------------------------      
+# TRAINING
+
+    # mini-batch gradient descent
+
+    def train(self, X, Y, epochs=10, learning_rate=0.01, batch_size=1, 
+              verbose=True, lr_decay=0.95, decay_every=20, l2_lambda = 0):
+        
+        # X, Y - whole training dataset
+
+        """
+        Train the ANN using mini-batch gradient descent.
+
+        Parameters:
+        -----------
+        X : array of input column vectors
+            Shape: (n_samples, n_input, 1)
+        Y : array of target column vectors
+            Shape: (n_samples, n_output, 1)
+        epochs : int
+            Number of full passes over the dataset
+        learning_rate : float
+            Step size for gradient descent
+        batch_size : int
+            Number of samples per mini-batch
+        verbose : bool
+            If True, prints loss per epoch
+        """
+           
+        n_samples = len(X)
+        current_lr = learning_rate
+
         
 
 
 
 
-    
+
+
+
+
+
+
+
+
 # test 
 
-ann = ANN(5, [10, 3, 2, 2, 1]) #activation_hidden="sigmoid")
-x = ann.prediction([[1],[2], [1],[2],[1],[2],[1],[2],[6],[3] ])
-print(x)
-ann._compute_deltas([[100]])
+
+def test_compute_gradients_batch():
+    # Load a small batch from your data file
+    filename = "data/training_set.howlin"
+    X, y = data_prep_np.parse_input(filename, start=0, end=4)  # 4 samples
+
+    # Reshape X and y for ANN input: (batch_size, n_input, 1)
+    batch_inputs = [X[i].reshape(-1, 1) for i in range(X.shape[0])]
+    batch_targets = [np.array([[y[i]]]) for i in range(y.shape[0])]
+
+    # Build a small ANN
+    n_layers = 3
+    n_neurons_each_layer = [X.shape[1], 5, 1]
+    ann = ANN(n_layers, n_neurons_each_layer, activation_hidden="relu", activation_output="sigmoid", loss_function="binary_cross_entropy")
+
+    # Compute gradients for the batch
+    ann.compute_gradients_batch(batch_inputs, batch_targets)
+
+    # Print gradients for each layer
+    for i, layer in enumerate(ann.layers):
+        print(f"Layer {i+1} dweights shape: {layer.dweights.shape}")
+        print(f"Layer {i+1} dbiases shape: {layer.dbiases.shape}")
+        #print(f"Layer {i+1} dweights (preview):\n{layer.dweights}")
+        #print(f"Layer {i+1} dbiases (preview):\n{layer.dbiases}\n")
+
+if __name__ == "__main__":
+    test_compute_gradients_batch()
