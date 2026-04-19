@@ -192,11 +192,11 @@ class ANN_Layer():
 
 
 
-def print_weights_and_biases(self):
-        print(f"Weights for layer number {self.n}:")
-        print(np.round(self.weights, 3))
-        print(f"Biases for layer number {self.n}:")
-        print(np.round(self.biases, 3))
+    def print_weights_and_biases(self):
+            print(f"Weights for layer number {self.n}:")
+            print(np.round(self.weights, 3))
+            print(f"Biases for layer number {self.n}:")
+            print(np.round(self.biases, 3))
 
 
 

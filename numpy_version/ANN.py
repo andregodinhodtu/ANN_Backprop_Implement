@@ -244,7 +244,7 @@ class ANN():
     # mini-batch gradient descent
 
     def train(self, X, Y, epochs=10, learning_rate=0.01, batch_size=1, 
-              verbose=True, lr_decay=0.95, decay_every=20, l2_lambda = 0):
+              verbose=True, lr_decay=0.95, decay_every=20, l2_lambda=0):
         
         # X, Y - whole training dataset
 
@@ -253,24 +253,84 @@ class ANN():
 
         Parameters:
         -----------
-        X : array of input column vectors
-            Shape: (n_samples, n_input, 1)
-        Y : array of target column vectors
-            Shape: (n_samples, n_output, 1)
+        X : np.ndarray, shape (n_samples, n_input, 1)
+        Y : np.ndarray, shape (n_samples, n_output, 1)
         epochs : int
-            Number of full passes over the dataset
         learning_rate : float
-            Step size for gradient descent
         batch_size : int
-            Number of samples per mini-batch
         verbose : bool
-            If True, prints loss per epoch
+        lr_decay : float   - multiplicative decay factor
+        decay_every : int  - decay LR every N epochs
+        l2_lambda : float  - L2 regularization strength (0 = off)
         """
-           
+        
+        X = np.array(X)
+        Y = np.array(Y)
         n_samples = len(X)
         current_lr = learning_rate
 
-        
+        for epoch in range(epochs):
+
+            # LR decay
+            if epoch != 0 and epoch % decay_every == 0:
+                current_lr *= lr_decay
+                if verbose:
+                    print(f"  [LR decayed to {current_lr:.6f}]")
+
+            # shuffle
+            indices = np.random.permutation(n_samples)
+            X_shuffled = X[indices]
+            Y_shuffled = Y[indices]
+
+            # reset loss
+            epoch_loss = 0.0
+
+            # mini-batch loop
+            for start in range(0, n_samples, batch_size):
+                # get batch
+                end = min(start + batch_size, n_samples)
+                batch_X = X_shuffled[start:end]
+                batch_Y = Y_shuffled[start:end]
+
+                # compute gradients of the batch
+                self.compute_gradients_batch(batch_X, batch_Y)
+
+                # update layer parameters and L2 if set
+                for layer in self.layers:
+                    if l2_lambda > 0: # apply regularization (penalizes large weights)ž
+
+                        # weight decay
+                        # j_reg = j + reg
+                        # reg = (l2_lambda / 2) * weights**2
+                        # derivative of reg = l2_lambda * weights
+                        layer.dweights += l2_lambda * layer.weights
+
+                        layer.weights -= current_lr * layer.dweights
+                        layer.biases  -= current_lr * layer.dbiases
+
+            # epoch loss - vectorized
+
+            # all samples -> predictions
+            all_preds = np.array([self.prediction(x) for x in X])
+
+            # ensure same shape of true labels and predictions
+            Y_flat = Y.reshape(n_samples, -1)
+            P_flat = all_preds.reshape(n_samples, -1)
+
+            # calculate loss
+            if self.loss_function == "mse":
+                epoch_loss = np.mean((P_flat - Y_flat) ** 2)
+            elif self.loss_function in ["bse", "binarycrossentropy", "binary_cross_entropy"]:
+                epoch_loss = self.binary_cross_entropy(Y_flat, P_flat)
+            else:
+                raise ValueError("Unknown loss function")
+
+            if verbose:
+                print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f} - LR: {current_lr:.6f}")
+
+
+                
+
 
 
 
