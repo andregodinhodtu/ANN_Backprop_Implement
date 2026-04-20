@@ -80,6 +80,7 @@ class ANN_Layer():
         # - bias: (n_neuorns_output, 1)
         self.weights = None
         self.biases = None
+        self.initialize_weights_bias()
         
         # Intermediate values
         self.z_s = None
@@ -132,7 +133,7 @@ class ANN_Layer():
         else:
             # Xavier: limit = sqrt(6.0/(n_in + n_out))
             limit = np.sqrt(6.0/(n_in + n_out))
-            self.weights = np.random.uniform(-limit, limit, (n_in, n_out)) # min, max, shape
+            self.weights = np.random.uniform(-limit, limit, (n_out, n_in)) # min, max, shape
 
         # Bias vector: shape (n_neurons_output, 1)
         self.biases = np.zeros((n_out, 1))
