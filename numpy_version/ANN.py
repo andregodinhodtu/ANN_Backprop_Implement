@@ -94,30 +94,43 @@ class ANN():
 
 
     # ----------------------------------------------------------------------------
-    # PREDICTION
+    # PREDICTION (single sample) as a reference
             
     def prediction(self, input_vector):
-        """
-        Make a forward pass through the entire ANN.
 
-        Parameters:
-        -----------
-        input_vector : list of lists
-            Input column vector (shape: n_input x 1).
 
-        Returns:
-        --------
-        list of lists
-            Output of the last layer after activation.
-        """
-        working_vector = input_vector
+        x = np.array(input_vector)
+        if x.ndim == 1:
+            x = x.reshape(-1, 1)
+            # shape stays (n_features, 1)
 
-        # Forward pass through all layers
+        # foward pass by calling layer
         for layer in self.layers:
-            # Use the layer's __call__ to do forward pass and activation
-            working_vector = layer(working_vector)
+            x = layer(x)
+        return x
+    
 
-        return working_vector
+
+    # FORWARD PASS - prediction over a full batch at once
+
+    # X : np.ndarray, shape (n_samples, n_input, 1) (what train() takes)
+    # transposed to (n_input, n_samples)
+
+    def _forward_batch(self, input_batch):
+
+        """
+        Forward pass for the entire mini-batch at once. 
+        X : (n_samples, n_input, 1)
+        
+        each layer stores a_s in shape (n_neurons, n_)"""
+
+        # get shape (n_input, n_samples)
+        x = input_batch[:, :, 0].T
+        # foward pass by calling layer
+        for layer in self.layers:
+            x = layer(x) # works with any 2d input
+        return x
+
     
 
     # -----------------------------------------------------------------------------
@@ -131,18 +144,18 @@ class ANN():
     #  derivative of a bias = delta
 
        
-    def _compute_deltas(self, y):
+    def _compute_deltas(self, y_batch):
         """
         Compute delta values for each layer in the network for backpropagation.
         Stores them in each layer's `.delta` attribute.
 
         Parameters:
         -----------
-        y : list of lists or np.array
-            Target output column vector (shape: n_output x 1)
+        y_batch : (batch_size, n_output, 1)
         """
 
-        y = np.array(y)
+        # shape
+        y = y_batch[:, :, 0].T
 
         # first: output layer 
         output_layer = self.layers[-1]
@@ -159,7 +172,7 @@ class ANN():
             raise ValueError("Unknown loss function.")
         
         # save delta
-        output_layer.delta = (loss_deriv * output_layer.activation_derivatives).reshape(-1,1)
+        output_layer.delta = loss_deriv * output_layer.activation_derivatives
         
         # backwards loop through hidden layers
         for i in range(len(self.layers) - 2, -1, -1):
@@ -172,10 +185,11 @@ class ANN():
             # next_layer.weights[k, j] = weight of neuron j from this layer to neuron k in next
             # sum (w_this-next * delta_next) for all neurons
 
+            # (n_this, batch_size) = (n_this, n_next) @ (n_next, batch_size)
             weighted_sum = np.dot(next_layer.weights.T, next_layer.delta)
-            layer.delta = (weighted_sum * layer.activation_derivatives).reshape(-1,1) # ensure correct shape
+            layer.delta = weighted_sum * layer.activation_derivatives
         
-
+    # compute 1 sample (func used only as a reference)
     def compute_gradients_sample(self, input_vector, target):
         """
         Computes gradients (dweights and dbiases) for a single training sample using NumPy.
@@ -211,31 +225,45 @@ class ANN():
     def compute_gradients_batch(self, batch_inputs, batch_targets):
 
         """
-        Computes average gradients (dweights and dbiases) for a batch of samples using NumPy.
+        Computes average gradients (dweights and dbiases) for a batch of samples using NumPy vectorized computation.
 
         batch_inputs: shape (batch_size, n_input, 1)
         batch_targets: shape (batch_size, n_output, 1)
         """
 
-        # gradient storage for all layers
-        accum_dweights = [np.zeros_like(layer.weights) for layer in self.layers]
-        accum_dbiases = [np.zeros_like(layer.biases) for layer in self.layers]
-        
-        # compute gradients per layer
-        for x, y in zip(batch_inputs, batch_targets):
-            self.compute_gradients_sample(x, y)
+        batch_inputs  = np.array(batch_inputs)
+        batch_targets = np.array(batch_targets)
+        batch_size    = len(batch_inputs)
 
-            
-            # save each layers dweights and dbiases
-            for i, layer in enumerate(self.layers):
-                accum_dweights[i] += layer.dweights
-                accum_dbiases[i] += layer.dbiases
+        # forward and backward pass over entire batch
+        self._forward_batch(batch_inputs)
+        self._compute_deltas(batch_targets)
 
-        # average results per layer
-        batch_size = len(batch_inputs)
+        # gradient calculation
+
+        # dW = (1/B) * delta @ prev_a.T
+        # shape: (n_out, n_in), (n_out, B) @ (B, n_in)
+        # depend on input values + loss
+
+        # db = average of deltas over the batch
+        # depend only on loss
+
         for i, layer in enumerate(self.layers):
-            layer.dweights = accum_dweights[i] / batch_size
-            layer.dbiases = accum_dbiases[i] / batch_size
+            if i == 0:
+                prev_a = batch_inputs[:, :, 0].T   # (n_features, batch_size)
+            else:
+                prev_a = self.layers[i - 1].a_s    # (n_in, batch_size)
+
+            layer.dweights = np.dot(layer.delta, prev_a.T) / batch_size
+            layer.dbiases  = layer.delta.mean(axis=1, keepdims=True)
+
+
+
+        
+
+
+
+
         
 
 # -----------------------------------------------------------------------------      
@@ -308,25 +336,27 @@ class ANN():
                         layer.weights -= current_lr * layer.dweights
                         layer.biases  -= current_lr * layer.dbiases
 
+            
+            if verbose:
             # epoch loss - vectorized
 
-            # all samples -> predictions
-            all_preds = np.array([self.prediction(x) for x in X])
+                # all samples -> predictions
+                all_preds = np.array([self.prediction(x) for x in X])
 
-            # ensure same shape of true labels and predictions
-            Y_flat = Y.reshape(n_samples, -1)
-            P_flat = all_preds.reshape(n_samples, -1)
+                # ensure same shape of true labels and predictions
+                Y_flat = Y.reshape(n_samples, -1)
+                P_flat = all_preds.reshape(n_samples, -1)
 
-            # calculate loss
-            if self.loss_function == "mse":
-                epoch_loss = np.mean((P_flat - Y_flat) ** 2)
-            elif self.loss_function in ["bse", "binarycrossentropy", "binary_cross_entropy"]:
-                epoch_loss = self.binary_cross_entropy(Y_flat, P_flat)
-            else:
-                raise ValueError("Unknown loss function")
+                # calculate loss
+                if self.loss_function == "mse":
+                    epoch_loss = np.mean((P_flat - Y_flat) ** 2)
+                elif self.loss_function in ["bse", "binarycrossentropy", "binary_cross_entropy"]:
+                    epoch_loss = self.binary_cross_entropy(Y_flat, P_flat)
+                else:
+                    raise ValueError("Unknown loss function")
 
-            if verbose:
-                print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f} - LR: {current_lr:.6f}")
+                if verbose:
+                    print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f} - LR: {current_lr:.6f}")
 
 
                 

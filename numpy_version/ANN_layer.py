@@ -108,29 +108,50 @@ class ANN_Layer():
             
     def initialize_weights_bias(self, seed=None):
         """
-        Initialize weights randomly in a fixed range [-0.5, 0.5].
-        Biases are initialized to 0.
+        Initialize weights:
+        - Xavier initialization for sigmoid
+        - He initialization for relu layers
     
         Parameters:
         -----------
         seed : int or None
             Optional seed for the random number generator to make results reproducible.
         """
-        if seed is not None:
-            np.random.seed(seed)  # Set seed for reproducibility
 
-        # Weight matrix: shape (n_neurons_output, n_neurons_input)
-        self.weights = np.random.uniform(-0.5, 0.5, (self.n_neurons_output, self.n_neurons_input))
+        if seed is not None:
+            np.random.seed(seed)  # set seed for reproducibility
+
+        n_out = self.n_neurons_output
+        n_in = self.n_neurons_input
+
+        # weight matrix: shape (n_neurons_output, n_neurons_input)
+        if self.activation_function == "relu":
+            # He: std = sqrt(2 /n_in)
+            self.weights = np.random.randn(n_out, n_in) * (np.sqrt(2/n_in)) # normal distribution
+        
+        else:
+            # Xavier: limit = sqrt(6.0/(n_in + n_out))
+            limit = np.sqrt(6.0/(n_in + n_out))
+            self.weights = np.random.uniform(-limit, limit, (n_in, n_out)) # min, max, shape
 
         # Bias vector: shape (n_neurons_output, 1)
-        self.biases = np.zeros((self.n_neurons_output, 1))
+        self.biases = np.zeros((n_out, 1))
 
 
-    
-    def forward(self, input_vector):
+    # ----------------------------------------------------------------------------
+    # FORWARD PASS - with a batch matrix
+
+    def forward(self, input_matrix):
+       
+        """
+        Forward pass over a full batch. Accepts column vectors as well.
+
+        input_matrix : shape (n_features, batch_size)  ← key change
+        Stores a_s of shape (n_neurons_output, batch_size).
+        """
         
-        # ensure input is a 2D np array
-        x = np.array(input_vector)
+        # ensure input is a 2D np.array
+        x = np.array(input_matrix)
         if x.ndim == 1:
             x = x.reshape(-1,1) # column vector (n_features, 1)
         
@@ -148,12 +169,15 @@ class ANN_Layer():
         return self.a_s
     
 
+# -------------------------------------------------------------------------------
+# BACKWARD PASS - activation derivatives over the whole batch
 
     def compute_activation_derivatives(self):
         """
         Compute the derivative of the activation function for each neuron
         in this layer and store them in self.activation_derivatives.
 
+        Result shape: (n_neurons_output, batch_size)
         """
         if self.activation_function == "relu":
             self.activation_derivatives = self.relu_deriv(self.a_s)
