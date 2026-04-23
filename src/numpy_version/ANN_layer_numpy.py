@@ -192,7 +192,6 @@ class ANN_Layer_numpy():
             self.a_s = self.sigmoid(self.z_s)
         else:
             raise ValueError("Unknown activation function")
-        print(self.a_s)
         return self.a_s  
 
     def compute_activation_derivatives(self):
