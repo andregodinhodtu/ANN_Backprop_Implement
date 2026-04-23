@@ -2,12 +2,11 @@
 # Build Aritificial Neural Network
 ##################################
 import random
+import math
 
 # no seed - each ANN should be initialised with random weights + epochs must differ 
 
-class ANN_Layer():
-    
-    EULER_NUMBER = 2.718281828459045
+class ANN_Layer_base_python():
     
     ACTIVATION_FUNCTIONS = {
         "relu": {
@@ -15,9 +14,9 @@ class ANN_Layer():
             "deriv": lambda x: 1 if x > 0 else 0
         },
         "sigmoid": {
-            "func": lambda x: 1 / (1 + ANN_Layer.EULER_NUMBER ** (-x)),
-            "deriv": lambda x: (1 / (1 + ANN_Layer.EULER_NUMBER ** (-x))) *
-                               (1 - (1 / (1 + ANN_Layer.EULER_NUMBER ** (-x))))
+            "func": lambda x: 1 / (1 + math.e ** (-x)),
+            "deriv": lambda x: (1 / (1 + math.e ** (-x))) *
+                               (1 - (1 / (1 + math.e ** (-x))))
         },
         "leaky_relu": {
             "func": lambda x: x if x > 0 else 0.01 * x,
@@ -89,84 +88,47 @@ class ANN_Layer():
         # Backpropagation
         self.activation_derivatives = []
         self.delta = []  # to store error signal for backprop
-        
-    def __mul__(self, input_vector):
+           
+    def _matrix_multiply(self, input_vector):
         """
-        Magic method to allow 'layer * input_vector' syntax.
+        Multiply the layer's weight matrix by the input vector.
 
         Parameters:
         -----------
         input_vector : list of lists
-            Input data to the layer (each row is an input vector).
+            Column vector of shape (n_neurons_input, 1).
+            Assumed to be valid — validation is handled by forward().
 
         Returns:
         --------
         list of lists
-            Result of multiplying the layer's weight matrix by the input_vector 
-            and adding biases (activation can be applied afterward).
+            Result of W * input_vector, shape (n_neurons_output, 1).
         """
-
-        # --- Type checks ---
-        if not isinstance(input_vector, list):
-            raise TypeError("input_vector must be a list of lists")
-        if not all(isinstance(row, list) for row in input_vector):
-            raise TypeError("All elements of input_vector must be lists (rows)")
-
-        # --- Value checks ---
-        if len(input_vector) == 0:
-            raise ValueError("input_vector cannot be empty")
-        if any(len(row) != 1 for row in input_vector):
-            raise ValueError("Each row in input_vector must contain 1 element")
-
-        # --- Product checks (dimension compatibility) ---
-        n_inputs = len(self.weights[0])  # number of inputs expected
-        if len(input_vector) != n_inputs:
-            raise ValueError(
-                f"Input must have exactly {n_inputs} elements "
-                "to match the layer's input size."
-            )
-
-        # --- Matrix product (weights x input_vector) ---
         output_vector = []
 
+        # Compute the dot product of each weight row with the input vector
         for row in self.weights:
-            output_row = []
             dot_product = sum(row[i] * input_vector[i][0] for i in range(len(row)))
             output_vector.append([dot_product])
 
-        return output_vector    
-    
-    def __add__(self, output_matrix):
+        return output_vector
+
+    def _add_biases(self, output_matrix):
         """
-        Magic method to add the layer's biases to a pre-activation output vector.
+        Add the layer's bias vector to a pre-activation output matrix.
 
         Parameters:
         -----------
         output_matrix : list of lists
-            Result of the layer multiplication (weights * input), shape (n_neurons_output, 1)
-            or multiple inputs (rows = inputs, columns = neurons).
+            Result of W * x, shape (n_neurons_output, 1).
+            Assumed to be valid — validation is handled by forward().
 
         Returns:
         --------
         list of lists
-            The output_matrix with biases added element-wise.
+            output_matrix with biases added element-wise, shape (n_neurons_output, 1).
         """
-
-        # --- Type checks ---
-        if not isinstance(output_matrix, list) or not all(isinstance(row, list) for row in output_matrix):
-            raise TypeError("output_matrix must be a list of lists")
-
-        # --- Value checks ---
-        if len(output_matrix) == 0:
-            raise ValueError("output_matrix cannot be empty")
-        if len(output_matrix) != self.n_neurons_output:
-            raise ValueError(
-                f"output_matrix must have {self.n_neurons_output} rows to match the biases"
-            )
-        if any(len(row) != 1 for row in output_matrix):
-            raise ValueError("Each row in output_matrix must contain exactly 1 element")
-
-        # --- Add biases ---
+        # Add bias to each neuron's pre-activation value
         result = [
             [output_matrix[i][0] + self.biases[i][0]]
             for i in range(self.n_neurons_output)
@@ -289,9 +251,50 @@ class ANN_Layer():
         self.biases = [[0.0] for _ in range(self.n_neurons_output)]
     
     def forward(self, input_vector):
-        before_bias = self * input_vector  # uses __mul__ for W*x
-        after_bias = self + before_bias          # uses __add__ for +b
+        """
+        Compute the pre-activation output of the layer: z = W * x + b.
+
+        Parameters:
+        -----------
+        input_vector : list of lists
+            Column vector of shape (n_neurons_input, 1).
+
+        Returns:
+        --------
+        list of lists
+            Pre-activation output z, shape (n_neurons_output, 1).
+        """
+        # --- Type checks ---
+        if not isinstance(input_vector, list):
+            raise TypeError("input_vector must be a list of lists")
+        if not all(isinstance(row, list) for row in input_vector):
+            raise TypeError("All elements of input_vector must be lists (rows)")
+
+        # --- Value checks ---
+        if len(input_vector) == 0:
+            raise ValueError("input_vector cannot be empty")
+        if any(len(row) != 1 for row in input_vector):
+            raise ValueError("Each row in input_vector must contain 1 element")
+
+        # --- State checks (weights and biases must be initialized before forward) ---
+        if not self.weights:
+            raise ValueError("Weights are not initialized. Run initialize_weights_bias() first.")
+        if not self.biases:
+            raise ValueError("Biases are not initialized. Run initialize_weights_bias() first.")
+
+        # --- Dimension compatibility check ---
+        n_inputs = len(self.weights[0])
+        if len(input_vector) != n_inputs:
+            raise ValueError(
+                f"Input must have exactly {n_inputs} elements "
+                "to match the layer's input size."
+            )
+
+        # Compute z = W * x + b
+        before_bias = self._matrix_multiply(input_vector)
+        after_bias = self._add_biases(before_bias)
         self.z_s = after_bias
+
         return self.z_s
         
     def _apply_activation(self):

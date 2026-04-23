@@ -3,7 +3,7 @@ import random
 
 # no seed - each ANN should be initialised with random weights + epochs must differ 
 
-class ANN_Layer():
+class ANN_Layer_numpy():
     
     # sigmoid for binary classification problem
     @staticmethod
@@ -22,9 +22,6 @@ class ANN_Layer():
     @staticmethod
     def relu_deriv(a):
         return (a > 0).astype(float) # returns 1.0 if a > 0 and 0.0 otherwise
-    
-
-
     #------------------------------------------------------------------------------
 
 
@@ -89,8 +86,7 @@ class ANN_Layer():
         # Backpropagation
         self.activation_derivatives = None
         self.delta = None  # to store error signal for backprop
-        
-    
+          
     def __call__(self, input_vector):
         """
         Enables calling the layer like a function: layer(input_vector).
@@ -104,9 +100,7 @@ class ANN_Layer():
 
         """
         return self.forward(input_vector)           # compute pre-activation z_s + activation a_s
-        
-        
-            
+                   
     def initialize_weights_bias(self, seed=None):
         """
         Initialize weights:
@@ -137,8 +131,6 @@ class ANN_Layer():
 
         # Bias vector: shape (n_neurons_output, 1)
         self.biases = np.zeros((n_out, 1))
-
-
     # ----------------------------------------------------------------------------
     # FORWARD PASS - with a batch matrix
 
@@ -167,8 +159,7 @@ class ANN_Layer():
         else:
             raise ValueError("Unknown activation function")
         
-        return self.a_s
-    
+        return self.a_s  
 
 # -------------------------------------------------------------------------------
 # BACKWARD PASS - activation derivatives over the whole batch
@@ -224,14 +215,13 @@ class ANN_Layer():
             print(np.round(self.biases, 3))
 
 
-
 def test_layer_call():
     """
     Test the __call__ method of ANN_Layer.
     Verifies that the forward pass + activation works correctly.
     """
     # Create a simple layer with 2 inputs and 2 outputs
-    layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
+    layer = ANN_Layer_numpy(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     
     # Manually set weights and biases for predictable output
     layer.weights = np.array([

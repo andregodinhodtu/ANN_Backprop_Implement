@@ -2,12 +2,11 @@
 # Build Aritificial Neural Network
 ##################################
 import random
-from ANN_layer import ANN_Layer
 import math
+from ANN_layer_base_python import ANN_Layer_base_python
 
-class ANN():
-    
-    EULER_NUMBER = 2.718281828459045
+
+class ANN_base_python():
  
     LOSS_FUNCTIONS = {
         "MSE": {
@@ -17,8 +16,8 @@ class ANN():
             "deriv": lambda x, y: 2 * (x - y)
         },
         "BinaryCrossEntropy" : {
-            "func": lambda x, y: sum( - (y[i][0] * ANN.log(max(x[i][0], 1e-15)) +
-                                    (1 - y[i][0]) * ANN.log(max(1 - x[i][0], 1e-15)))
+            "func": lambda x, y: sum( - (y[i][0] * ANN_base_python.log(max(x[i][0], 1e-15)) +
+                                    (1 - y[i][0]) * ANN_base_python.log(max(1 - x[i][0], 1e-15)))
                                     for i in range(len(x))) / len(x),  # divide by N
             "deriv": lambda x, y: (x - y) / (x * (1 - x) + 1e-15)
         }
@@ -76,7 +75,7 @@ class ANN():
             act = self.activation_output if i == self.n_layers - 2 else self.activation_hidden
             
             # Create ANN_Layer
-            layer = ANN_Layer(
+            layer = ANN_Layer_base_python(
                 n=i+1,
                 n_neurons_input=n_input,
                 n_neurons_output=n_output,

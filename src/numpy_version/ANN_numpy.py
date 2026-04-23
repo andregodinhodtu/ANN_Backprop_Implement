@@ -1,7 +1,7 @@
 import random
 import numpy as np
 import data_prep_np
-from ANN_layer import ANN_Layer
+from ANN_layer_numpy import ANN_Layer_numpy
 
 class ANN():
 
@@ -79,7 +79,7 @@ class ANN():
             act = self.activation_output if i == self.n_layers - 2 else self.activation_hidden
             
             # Create ANN_Layer
-            layer = ANN_Layer(
+            layer = ANN_Layer_numpy(
                 n=i+1,
                 n_neurons_input=n_input,
                 n_neurons_output=n_output,
@@ -388,7 +388,7 @@ def test_compute_gradients_batch():
     # Build a small ANN
     n_layers = 3
     n_neurons_each_layer = [X.shape[1], 5, 1]
-    ann = ANN(n_layers, n_neurons_each_layer, activation_hidden="relu", activation_output="sigmoid", loss_function="binary_cross_entropy")
+    ann = ANN_numpy(n_layers, n_neurons_each_layer, activation_hidden="relu", activation_output="sigmoid", loss_function="binary_cross_entropy")
 
     # Compute gradients for the batch
     ann.compute_gradients_batch(batch_inputs, batch_targets)
