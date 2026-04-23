@@ -89,53 +89,6 @@ class ANN_Layer_base_python():
         self.activation_derivatives = []
         self.delta = []  # to store error signal for backprop
            
-    def _matrix_multiply(self, input_vector):
-        """
-        Multiply the layer's weight matrix by the input vector.
-
-        Parameters:
-        -----------
-        input_vector : list of lists
-            Column vector of shape (n_neurons_input, 1).
-            Assumed to be valid — validation is handled by forward().
-
-        Returns:
-        --------
-        list of lists
-            Result of W * input_vector, shape (n_neurons_output, 1).
-        """
-        output_vector = []
-
-        # Compute the dot product of each weight row with the input vector
-        for row in self.weights:
-            dot_product = sum(row[i] * input_vector[i][0] for i in range(len(row)))
-            output_vector.append([dot_product])
-
-        return output_vector
-
-    def _add_biases(self, output_matrix):
-        """
-        Add the layer's bias vector to a pre-activation output matrix.
-
-        Parameters:
-        -----------
-        output_matrix : list of lists
-            Result of W * x, shape (n_neurons_output, 1).
-            Assumed to be valid — validation is handled by forward().
-
-        Returns:
-        --------
-        list of lists
-            output_matrix with biases added element-wise, shape (n_neurons_output, 1).
-        """
-        # Add bias to each neuron's pre-activation value
-        result = [
-            [output_matrix[i][0] + self.biases[i][0]]
-            for i in range(self.n_neurons_output)
-        ]
-
-        return result
-    
     def __call__(self, input_vector):
         """
         Enables calling the layer like a function: layer(input_vector).
@@ -152,9 +105,7 @@ class ANN_Layer_base_python():
         list of lists
             Activated output of the layer.
         """
-        self.forward(input_vector)           # compute pre-activation z_s
-        activated_output = self._apply_activation()  # compute and store a_s
-        return activated_output
+        return self.forward(input_vector)
         
     @property
     def weights_matrix(self):
@@ -227,6 +178,29 @@ class ANN_Layer_base_python():
         # Print the bias matrix
         print(f"Biases for layer number {self.n}:")
         self._print_matrix(self.biases)
+        
+    def shape(self, what):
+        """
+        Return the shape of the layer's weights, biases, or output.
+
+        Parameters:
+        -----------
+        what : str
+            What shape to return: "weights", "biases", or "output".
+    
+        Returns:
+        --------
+        tuple
+            Shape as (rows, columns) for weights/biases, or (n_neurons_output, 1) for output.
+        """
+        if what == "weights":
+            return (len(self.weights), len(self.weights[0]) if self.weights else 0)
+        elif what == "biases":
+            return (len(self.biases), len(self.biases[0]) if self.biases else 0)
+        elif what == "output":
+            return (len(self.a_s), len(self.a_s[0]) if self.a_s else 0)
+        else:
+            raise ValueError("Invalid argument for 'what'. Choose 'weights', 'biases', or 'output'.")
             
     def initialize_weights_bias(self, seed=None):
         """
@@ -250,9 +224,56 @@ class ANN_Layer_base_python():
         # Bias vector: shape (n_neurons_output, 1)
         self.biases = [[0.0] for _ in range(self.n_neurons_output)]
     
+    def _matrix_multiply(self, input_vector):
+        """
+        Multiply the layer's weight matrix by the input vector.
+
+        Parameters:
+        -----------
+        input_vector : list of lists
+            Column vector of shape (n_neurons_input, 1).
+            Assumed to be valid — validation is handled by forward().
+
+        Returns:
+        --------
+        list of lists
+            Result of W * input_vector, shape (n_neurons_output, 1).
+        """
+        output_vector = []
+
+        # Compute the dot product of each weight row with the input vector
+        for row in self.weights:
+            dot_product = sum(row[i] * input_vector[i][0] for i in range(len(row)))
+            output_vector.append([dot_product])
+
+        return output_vector
+
+    def _add_biases(self, output_matrix):
+        """
+        Add the layer's bias vector to a pre-activation output matrix.
+
+        Parameters:
+        -----------
+        output_matrix : list of lists
+            Result of W * x, shape (n_neurons_output, 1).
+            Assumed to be valid — validation is handled by forward().
+
+        Returns:
+        --------
+        list of lists
+            output_matrix with biases added element-wise, shape (n_neurons_output, 1).
+        """
+        # Add bias to each neuron's pre-activation value
+        result = [
+            [output_matrix[i][0] + self.biases[i][0]]
+            for i in range(self.n_neurons_output)
+        ]
+
+        return result
+    
     def forward(self, input_vector):
         """
-        Compute the pre-activation output of the layer: z = W * x + b.
+        Compute the full forward pass of the layer: a = f(W * x + b).
 
         Parameters:
         -----------
@@ -262,7 +283,7 @@ class ANN_Layer_base_python():
         Returns:
         --------
         list of lists
-            Pre-activation output z, shape (n_neurons_output, 1).
+            Activated output a, shape (n_neurons_output, 1).
         """
         # --- Type checks ---
         if not isinstance(input_vector, list):
@@ -290,52 +311,16 @@ class ANN_Layer_base_python():
                 "to match the layer's input size."
             )
 
-        # Compute z = W * x + b
+        # Compute z = W * x + b and store for backpropagation
         before_bias = self._matrix_multiply(input_vector)
-        after_bias = self._add_biases(before_bias)
-        self.z_s = after_bias
+        self.z_s = self._add_biases(before_bias)
 
-        return self.z_s
-        
-    def _apply_activation(self):
-        """
-        Apply the layer's activation function to each element of self.z_s.
-    
-        Returns:
-        --------
-        list of lists
-            Activated outputs as column vectors.
-        """
-        if not hasattr(self, 'z_s'):
-            raise ValueError("Pre-activation outputs 'self.z_s' not set")
-
+        # Compute a = f(z) and store for backpropagation
         func = self.ACTIVATION_FUNCTIONS[self.activation_function]['func']
         self.a_s = [[func(x[0])] for x in self.z_s]
+
         return self.a_s
         
-    def shape(self, what):
-        """
-        Return the shape of the layer's weights, biases, or output.
-
-        Parameters:
-        -----------
-        what : str
-            What shape to return: "weights", "biases", or "output".
-    
-        Returns:
-        --------
-        tuple
-            Shape as (rows, columns) for weights/biases, or (n_neurons_output, 1) for output.
-        """
-        if what == "weights":
-            return (len(self.weights), len(self.weights[0]) if self.weights else 0)
-        elif what == "biases":
-            return (len(self.biases), len(self.biases[0]) if self.biases else 0)
-        elif what == "output":
-            return (len(self.a_s), len(self.a_s[0]) if self.a_s else 0)
-        else:
-            raise ValueError("Invalid argument for 'what'. Choose 'weights', 'biases', or 'output'.")
-
     def compute_activation_derivatives(self):
         """
         Compute the derivative of the activation function for each neuron

@@ -5,6 +5,7 @@ import random
 
 class ANN_Layer_numpy():
     
+    
     # sigmoid for binary classification problem
     @staticmethod
     def sigmoid(x):
@@ -22,8 +23,6 @@ class ANN_Layer_numpy():
     @staticmethod
     def relu_deriv(a):
         return (a > 0).astype(float) # returns 1.0 if a > 0 and 0.0 otherwise
-    #------------------------------------------------------------------------------
-
 
     def __init__(self, n, n_neurons_input, n_neurons_output, activation_function="relu"):
         """
@@ -100,6 +99,44 @@ class ANN_Layer_numpy():
 
         """
         return self.forward(input_vector)           # compute pre-activation z_s + activation a_s
+        
+    @property
+    def weights_matrix(self):
+        """Getter for weights"""
+        return self.weights
+
+    @weights_matrix.setter
+    def weights_matrix(self, new_weights):
+        """Setter for weights"""
+        if not isinstance(new_weights, list) or not all(isinstance(row, list) for row in new_weights):
+            raise TypeError("Weights must be a list of lists")
+        if len(new_weights) != self.n_neurons_output:
+            raise ValueError(f"Weights must have {self.n_neurons_output} rows")
+        if any(len(row) != self.n_neurons_input for row in new_weights):
+            raise ValueError(f"Each weight row must have {self.n_neurons_input} columns")
+        self.weights = new_weights
+
+    @property
+    def biases_vector(self):
+        """Getter for biases"""
+        return self.biases
+
+    @biases_vector.setter
+    def biases_vector(self, new_biases):
+        """Setter for biases"""
+        if not isinstance(new_biases, list) or not all(isinstance(row, list) for row in new_biases):
+            raise TypeError("Biases must be a list of lists")
+        if len(new_biases) != self.n_neurons_output:
+            raise ValueError(f"Biases must have {self.n_neurons_output} rows")
+        if any(len(row) != 1 for row in new_biases):
+            raise ValueError("Each bias row must have exactly 1 column")
+        self.biases = new_biases
+     
+    def print_weights_and_biases(self):
+            print(f"Weights for layer number {self.n}:")
+            print(np.round(self.weights, 3))
+            print(f"Biases for layer number {self.n}:")
+            print(np.round(self.biases, 3)) 
                    
     def initialize_weights_bias(self, seed=None):
         """
@@ -131,8 +168,6 @@ class ANN_Layer_numpy():
 
         # Bias vector: shape (n_neurons_output, 1)
         self.biases = np.zeros((n_out, 1))
-    # ----------------------------------------------------------------------------
-    # FORWARD PASS - with a batch matrix
 
     def forward(self, input_matrix):
        
@@ -150,7 +185,6 @@ class ANN_Layer_numpy():
         
         # fill in z_s: z = w * x + b
         self.z_s = np.dot(self.weights, x) + self.biases
-
         # apply activation for a_s
         if self.activation_function == "relu":
             self.a_s = self.relu(self.z_s)
@@ -158,11 +192,8 @@ class ANN_Layer_numpy():
             self.a_s = self.sigmoid(self.z_s)
         else:
             raise ValueError("Unknown activation function")
-        
+        print(self.a_s)
         return self.a_s  
-
-# -------------------------------------------------------------------------------
-# BACKWARD PASS - activation derivatives over the whole batch
 
     def compute_activation_derivatives(self):
         """
@@ -180,7 +211,6 @@ class ANN_Layer_numpy():
 
         return self.activation_derivatives
         
-
     def update_parameters(self, learning_rate):
         """
         Update the layer's weights and biases using the stored gradients
@@ -205,15 +235,6 @@ class ANN_Layer_numpy():
         self.activation_derivatives = None
         self.z_s = None
         self.a_s = None
-
-
-
-    def print_weights_and_biases(self):
-            print(f"Weights for layer number {self.n}:")
-            print(np.round(self.weights, 3))
-            print(f"Biases for layer number {self.n}:")
-            print(np.round(self.biases, 3))
-
 
 def test_layer_call():
     """
