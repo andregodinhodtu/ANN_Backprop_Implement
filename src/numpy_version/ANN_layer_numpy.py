@@ -5,26 +5,23 @@ import random
 
 class ANN_Layer_numpy():
     
+    ACTIVATION_FUNCTIONS = {
+        "relu": {
+            "func": lambda x: np.maximum(0, x),
+            "deriv": lambda x: (x > 0).astype(float)
+        },
+        "sigmoid": {
+            "func": lambda x: 1 / (1 + np.e ** (-x)),
+            "deriv": lambda x: (1 / (1 + np.e ** (-x))) *
+                               (1 - (1 / (1 + np.e ** (-x))))
+        },
+        "leaky_relu": {
+            "func": lambda x: np.where(x > 0, x, 0.01 * x),
+            "deriv": lambda x: np.where(x > 0, 1.0, 0.01)
+        }
+    }
     
-    # sigmoid for binary classification problem
-    @staticmethod
-    def sigmoid(x):
-        return 1.0 / (1.0 + np.exp(-x))
-
-    @staticmethod
-    def sigmoid_deriv(a):
-        return a * (1.0 - a)
-    
-    # ReLu for hidden layers
-    @staticmethod
-    def relu(x):
-        return np.maximum(0,x)
-
-    @staticmethod
-    def relu_deriv(a):
-        return (a > 0).astype(float) # returns 1.0 if a > 0 and 0.0 otherwise
-
-    def __init__(self, n, n_neurons_input, n_neurons_output, activation_function="relu"):
+    def __init__(self, n, n_neurons_input, n_neurons_output, activation_function):
         """
         Initialize a layer in the neural network.
 
@@ -42,8 +39,7 @@ class ANN_Layer_numpy():
 
         activation_function : str
             Activation function to apply to this layer's output.
-            Default: "relu"
-            Other option: "sigmoid"
+            Must be in `self.ACTIVATION_FUNCTIONS`.
         """
 
         # Type and value checks
@@ -62,7 +58,7 @@ class ANN_Layer_numpy():
             raise ValueError("n_neurons_input must be > 0")
         if n_neurons_output <= 0:
             raise ValueError("n_neurons_output must be > 0") 
-        if activation_function not in ["relu", "sigmoid"]:
+        if activation_function not in self.ACTIVATION_FUNCTIONS:
             raise ValueError(f"Unknown hidden activation function: {activation_function}")
 
         # Layer structure
@@ -76,7 +72,6 @@ class ANN_Layer_numpy():
         # - bias: (n_neuorns_output, 1)
         self.weights = None
         self.biases = None
-        self.initialize_weights_bias()
         
         # Intermediate values
         self.z_s = None
@@ -98,7 +93,8 @@ class ANN_Layer_numpy():
             Input to the layer (column vector or batch of column vectors).
 
         """
-        return self.forward(input_vector)           # compute pre-activation z_s + activation a_s
+        # compute pre-activation z_s + activation a_s
+        return self.forward(input_vector)       
         
     @property
     def weights_matrix(self):
@@ -108,12 +104,19 @@ class ANN_Layer_numpy():
     @weights_matrix.setter
     def weights_matrix(self, new_weights):
         """Setter for weights"""
-        if not isinstance(new_weights, list) or not all(isinstance(row, list) for row in new_weights):
-            raise TypeError("Weights must be a list of lists")
-        if len(new_weights) != self.n_neurons_output:
-            raise ValueError(f"Weights must have {self.n_neurons_output} rows")
-        if any(len(row) != self.n_neurons_input for row in new_weights):
-            raise ValueError(f"Each weight row must have {self.n_neurons_input} columns")
+        if not isinstance(new_weights, (list, np.ndarray)):
+            raise TypeError("Weights must be a list of lists or a numpy array")
+        if isinstance(new_weights, list) and not all(isinstance(row, list) for row in new_weights):
+            raise TypeError("All elements of weights must be lists (rows)")
+        if isinstance(new_weights, list) and not all(isinstance(val, (int, float)) for row in new_weights for val in row):
+            raise TypeError("All values in weights must be ints or floats")
+        if isinstance(new_weights, np.ndarray) and not np.issubdtype(new_weights.dtype, np.number):
+            raise TypeError("All values in weights must be numeric")
+        new_weights = np.array(new_weights)
+        if new_weights.ndim != 2:
+            raise ValueError("Weights must be a 2D matrix")
+        if new_weights.shape != (self.n_neurons_output, self.n_neurons_input):
+            raise ValueError(f"Weights must have shape ({self.n_neurons_output}, {self.n_neurons_input})")
         self.weights = new_weights
 
     @property
@@ -124,157 +127,171 @@ class ANN_Layer_numpy():
     @biases_vector.setter
     def biases_vector(self, new_biases):
         """Setter for biases"""
-        if not isinstance(new_biases, list) or not all(isinstance(row, list) for row in new_biases):
-            raise TypeError("Biases must be a list of lists")
-        if len(new_biases) != self.n_neurons_output:
-            raise ValueError(f"Biases must have {self.n_neurons_output} rows")
-        if any(len(row) != 1 for row in new_biases):
-            raise ValueError("Each bias row must have exactly 1 column")
+        if not isinstance(new_biases, (list, np.ndarray)):
+            raise TypeError("Biases must be a list of lists or a numpy array")
+        if isinstance(new_biases, list) and not all(isinstance(row, list) for row in new_biases):
+            raise TypeError("All elements of biases must be lists (rows)")
+        if isinstance(new_biases, list) and not all(isinstance(val, (int, float)) for row in new_biases for val in row):
+            raise TypeError("All values in biases must be ints or floats")
+        if isinstance(new_biases, np.ndarray) and not np.issubdtype(new_biases.dtype, np.number):
+            raise TypeError("All values in biases must be numeric")
+        new_biases = np.array(new_biases)
+        if new_biases.ndim != 2:
+            raise ValueError("Biases must be a 2D column vector")
+        if new_biases.shape != (self.n_neurons_output, 1):
+            raise ValueError(f"Biases must have shape ({self.n_neurons_output}, 1)")
         self.biases = new_biases
      
     def print_weights_and_biases(self):
-            print(f"Weights for layer number {self.n}:")
-            print(np.round(self.weights, 3))
-            print(f"Biases for layer number {self.n}:")
-            print(np.round(self.biases, 3)) 
+        """
+        Prints the weight and bias matrices for one layer in a neural network.
+            
+        This is useful for inspecting the parameters of each layer during debugging 
+        or analysis. Each weight matrix connects one layer to the next, and each bias 
+        matrix corresponds to the neurons of the next layer.
+        """
+        print(f"Weights for layer number {self.n}:")
+        print(np.round(self.weights, 3))
+        print(f"Biases for layer number {self.n}:")
+        print(np.round(self.biases, 3)) 
                    
     def initialize_weights_bias(self, seed=None):
         """
-        Initialize weights:
-        - Xavier initialization for sigmoid
-        - He initialization for relu layers
-    
+        Initialize weights based on the activation function:
+        - ReLU / Leaky ReLU → He initialization
+        - Sigmoid / Tanh     → Xavier / Glorot initialization
+        Biases are initialized to 0.
+
         Parameters:
         -----------
         seed : int or None
             Optional seed for the random number generator to make results reproducible.
         """
+        rng = np.random.default_rng(seed)
 
-        if seed is not None:
-            np.random.seed(seed)  # set seed for reproducibility
-
-        n_out = self.n_neurons_output
-        n_in = self.n_neurons_input
-
-        # weight matrix: shape (n_neurons_output, n_neurons_input)
-        if self.activation_function == "relu":
-            # He: std = sqrt(2 /n_in)
-            self.weights = np.random.randn(n_out, n_in) * (np.sqrt(2/n_in)) # normal distribution
-        
+        # Pick initialization strategy based on activation function
+        if self.activation_function in ("relu", "leaky_relu"):
+            # He initialization
+            std = np.sqrt(2 / self.n_neurons_input)
         else:
-            # Xavier: limit = sqrt(6.0/(n_in + n_out))
-            limit = np.sqrt(6.0/(n_in + n_out))
-            self.weights = np.random.uniform(-limit, limit, (n_out, n_in)) # min, max, shape
+            # Xavier / Glorot initialization (sigmoid, tanh, etc.)
+            std = np.sqrt(2 / (self.n_neurons_input + self.n_neurons_output))
+
+        # Weight matrix: shape (n_neurons_output, n_neurons_input)
+        self.weights = rng.normal(0, std, size=(self.n_neurons_output, self.n_neurons_input))
 
         # Bias vector: shape (n_neurons_output, 1)
-        self.biases = np.zeros((n_out, 1))
+        self.biases = np.zeros((self.n_neurons_output, 1))
 
-    def forward(self, input_matrix):
-       
+    def forward(self, input_vector):
         """
-        Forward pass over a full batch. Accepts column vectors as well.
+        Compute the full forward pass of the layer: a = f(W * x + b).
+        Parameters:
+        -----------
+        input_vector : np.ndarray or list of lists
+            Column vector of shape (n_neurons_input, 1).
+        Returns:
+        --------
+        np.ndarray
+            Activated output a, shape (n_neurons_output, 1).
+        """
+        # --- Type checks ---
+        if not isinstance(input_vector, (list, np.ndarray)):
+            raise TypeError("input_vector must be a list of lists or a numpy array")
+        if isinstance(input_vector, list) and not all(isinstance(row, list) for row in input_vector):
+            raise TypeError("All elements of input_vector must be lists (rows)")
+        if isinstance(input_vector, list) and not all(isinstance(val, (int, float)) for row in input_vector for val in row):
+            raise TypeError("All values in input_vector must be ints or floats")
+        if isinstance(input_vector, np.ndarray) and not np.issubdtype(input_vector.dtype, np.number):
+            raise TypeError("All values in input_vector must be numeric")
+            
+        # Convert to numpy if needed
+        input_vector = np.array(input_vector)
 
-        input_matrix : shape (n_features, batch_size)  ← key change
-        Stores a_s of shape (n_neurons_output, batch_size).
-        """
-        
-        # ensure input is a 2D np.array
-        x = np.array(input_matrix)
-        if x.ndim == 1:
-            x = x.reshape(-1,1) # column vector (n_features, 1)
-        
-        # fill in z_s: z = w * x + b
-        self.z_s = np.dot(self.weights, x) + self.biases
-        # apply activation for a_s
-        if self.activation_function == "relu":
-            self.a_s = self.relu(self.z_s)
-        elif self.activation_function == "sigmoid":
-            self.a_s = self.sigmoid(self.z_s)
-        else:
-            raise ValueError("Unknown activation function")
-        return self.a_s  
+        # --- Value checks ---
+        if input_vector.ndim != 2:
+            raise ValueError("input_vector must be a 2D array")
+        if input_vector.shape[1] != 1:
+            raise ValueError("input_vector must have exactly 1 column")
+
+        # --- State checks ---
+        if self.weights is None:
+            raise ValueError("Weights are not initialized. Run initialize_weights_bias() first.")
+        if self.biases is None:
+            raise ValueError("Biases are not initialized. Run initialize_weights_bias() first.")
+
+        # --- Dimension compatibility check ---
+        if input_vector.shape[0] != self.n_neurons_input:
+            raise ValueError(
+                f"Input must have exactly {self.n_neurons_input} elements "
+                "to match the layer's input size."
+            )
+
+        # Compute z = W * x + b and store for backpropagation
+        self.z_s = self.weights @ input_vector + self.biases
+
+        # Compute a = f(z) and store for backpropagation
+        func = self.ACTIVATION_FUNCTIONS[self.activation_function]['func']
+        self.a_s = func(self.z_s)
+        return self.a_s
 
     def compute_activation_derivatives(self):
         """
         Compute the derivative of the activation function for each neuron
         in this layer and store them in self.activation_derivatives.
-
-        Result shape: (n_neurons_output, batch_size)
+        Returns:
+        --------
+        np.ndarray
+            Activation derivatives for this layer.
         """
-        if self.activation_function == "relu":
-            self.activation_derivatives = self.relu_deriv(self.a_s)
-        elif self.activation_function == "sigmoid":
-            self.activation_derivatives = self.sigmoid_deriv(self.a_s)
-        else:
-            raise ValueError("Unknown activation function")
+        # --- State checks ---
+        if self.z_s is None:
+            raise ValueError("z_s is not computed. Run forward() first.")
 
+        deriv_func = self.ACTIVATION_FUNCTIONS[self.activation_function]['deriv']
+        self.activation_derivatives = deriv_func(self.z_s)
         return self.activation_derivatives
         
-    def update_parameters(self, learning_rate):
+    def update_parameters(self, learning_rate, l2_lambda=0.0):
         """
         Update the layer's weights and biases using the stored gradients
-        and then clear all intermediate variables associated with the previous forward/backward pass.
-
+        with optional L2 regularization, then clear intermediate variables.
         Parameters:
         -----------
         learning_rate : float
             Learning rate for gradient descent.
+        l2_lambda : float
+            L2 regularization coefficient (weight decay). Default 0.0 (no regularization).
         """
-        if self.dweights is None or self.dbiases is None:
+        # --- Type checks ---
+        if not isinstance(learning_rate, (int, float)):
+            raise TypeError("learning_rate must be a number")
+        if not isinstance(l2_lambda, (int, float)):
+            raise TypeError("l2_lambda must be a number")
+
+        # --- Value checks ---
+        if learning_rate <= 0:
+            raise ValueError("learning_rate must be > 0")
+        if l2_lambda < 0:
+            raise ValueError("l2_lambda must be >= 0")
+
+        # --- State checks ---
+        if not hasattr(self, "dweights") or self.dweights is None:
+            raise ValueError("Gradients not computed. Run compute_gradients first.")
+        if not hasattr(self, "dbiases") or self.dbiases is None:
             raise ValueError("Gradients not computed. Run compute_gradients first.")
 
-        # update weights and biases 
-        self.weights -= learning_rate * self.dweights
+        # --- Update weights with L2 regularization ---
+        self.weights -= learning_rate * (self.dweights + l2_lambda * self.weights)
+
+        # --- Update biases (no regularization) ---
         self.biases -= learning_rate * self.dbiases
 
-        # cleanup
+        # --- Clean up temporary variables ---
         self.dweights = None
         self.dbiases = None
         self.delta = None
         self.activation_derivatives = None
         self.z_s = None
         self.a_s = None
-
-def test_layer_call():
-    """
-    Test the __call__ method of ANN_Layer.
-    Verifies that the forward pass + activation works correctly.
-    """
-    # Create a simple layer with 2 inputs and 2 outputs
-    layer = ANN_Layer_numpy(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    
-    # Manually set weights and biases for predictable output
-    layer.weights = np.array([
-        [1, 2],  # neuron 1
-        [3, 4]   # neuron 2
-    ])
-    layer.biases = np.array([
-        [1],     # bias for neuron 1
-        [-2]     # bias for neuron 2
-    ])
-    
-    # Define a test input vector (column vector)
-    input_vector = np.array([
-        [1],  # input 1
-        [2]   # input 2
-    ])
-    
-    # Call the layer using the __call__ method
-    output = layer(input_vector)
-    
-    # Expected calculation:
-    # Neuron 1: max(0, (1*1 + 2*2) + 1) = max(0, 1+4+1) = 6
-    # Neuron 2: max(0, (3*1 + 4*2) + (-2)) = max(0, 3+8-2) = 9
-    expected_output = np.array([[6], [9]])
-    
-    print("Output from layer __call__:", output)
-    print("Expected output:", expected_output)
-    
-    assert np.array_equal(output, expected_output), "Test failed: output does not match expected result."
-    print("\nTest passed ✅")
-
-
-# Run the test
-if __name__ == "__main__":
-    test_layer_call()
     

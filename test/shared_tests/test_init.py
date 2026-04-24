@@ -16,7 +16,7 @@ def ANN_Layer(request):
     return ANN_Layer_numpy
 
 # ============================================================
-# Valid input test
+# Valid input tests
 # ============================================================
 
 def test_input_layer(ANN_Layer):
@@ -30,6 +30,22 @@ def test_input_layer(ANN_Layer):
     assert layer.n_neurons_input == 5
     assert layer.n_neurons_output == 3
     assert layer.activation_function == "relu"
+
+@pytest.mark.parametrize("activation_function", ["relu", "sigmoid", "leaky_relu"])
+def test_all_activation_functions(ANN_Layer, activation_function):
+    layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function=activation_function)
+    assert layer.activation_function == activation_function
+
+# ============================================================
+# Valid input test — initial state
+# ============================================================
+
+def test_initial_state(ANN_Layer):
+    layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
+    assert layer.z_s is None
+    assert layer.a_s is None
+    assert layer.activation_derivatives is None
+    assert layer.delta is None
 
 # ============================================================
 # TypeError tests

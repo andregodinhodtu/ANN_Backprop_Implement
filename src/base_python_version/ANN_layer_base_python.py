@@ -4,8 +4,6 @@
 import random
 import math
 
-# no seed - each ANN should be initialised with random weights + epochs must differ 
-
 class ANN_Layer_base_python():
     
     ACTIVATION_FUNCTIONS = {
@@ -78,16 +76,16 @@ class ANN_Layer_base_python():
         # Parameters
         # - weights: (n_neuorns_output, n_neurons_input)
         # - bias: (n_neuorns_output, 1)
-        self.weights = []
-        self.biases = []
+        self.weights = None
+        self.biases = None
         
         # Intermediate values
-        self.z_s = []
-        self.a_s = []
+        self.z_s = None
+        self.a_s = None
         
         # Backpropagation
-        self.activation_derivatives = []
-        self.delta = []  # to store error signal for backprop
+        self.activation_derivatives = None
+        self.delta = None  # to store error signal for backprop
            
     def __call__(self, input_vector):
         """
@@ -117,6 +115,8 @@ class ANN_Layer_base_python():
         """Setter for weights"""
         if not isinstance(new_weights, list) or not all(isinstance(row, list) for row in new_weights):
             raise TypeError("Weights must be a list of lists")
+        if not all(isinstance(val, (int, float)) for row in new_weights for val in row):
+            raise TypeError("All values in weights must be ints or floats")
         if len(new_weights) != self.n_neurons_output:
             raise ValueError(f"Weights must have {self.n_neurons_output} rows")
         if any(len(row) != self.n_neurons_input for row in new_weights):
@@ -133,6 +133,8 @@ class ANN_Layer_base_python():
         """Setter for biases"""
         if not isinstance(new_biases, list) or not all(isinstance(row, list) for row in new_biases):
             raise TypeError("Biases must be a list of lists")
+        if not all(isinstance(val, (int, float)) for row in new_biases for val in row):
+            raise TypeError("All values in biases must be ints or floats")
         if len(new_biases) != self.n_neurons_output:
             raise ValueError(f"Biases must have {self.n_neurons_output} rows")
         if any(len(row) != 1 for row in new_biases):
@@ -151,7 +153,7 @@ class ANN_Layer_base_python():
         matrix : list of lists
             - A 2D list representing the matrix to print. Each element should 
             be a number or None.
-            - The inside lists are the rows of the matri
+            - The inside lists are the rows of the matrix
         """
         # Iterate through each row of the matrix
         for row in matrix:
@@ -204,20 +206,30 @@ class ANN_Layer_base_python():
             
     def initialize_weights_bias(self, seed=None):
         """
-        Initialize weights randomly in a fixed range [-0.5, 0.5].
+        Initialize weights based on the activation function:
+        - ReLU / Leaky ReLU → He initialization
+        - Sigmoid / Tanh     → Xavier / Glorot initialization
         Biases are initialized to 0.
-    
+
         Parameters:
         -----------
         seed : int or None
             Optional seed for the random number generator to make results reproducible.
         """
         if seed is not None:
-            random.seed(seed)  # Set seed for reproducibility
+            random.seed(seed)
+
+        # Pick initialization strategy based on activation function
+        if self.activation_function in ("relu", "leaky_relu"):
+            # He initialization
+            std = math.sqrt(2 / self.n_neurons_input)
+        else:
+            # Xavier / Glorot initialization (sigmoid, tanh, etc.)
+            std = math.sqrt(2 / (self.n_neurons_input + self.n_neurons_output))
 
         # Weight matrix: shape (n_neurons_output, n_neurons_input)
         self.weights = [
-            [random.uniform(-0.5, 0.5) for _ in range(self.n_neurons_input)]
+            [random.gauss(0, std) for _ in range(self.n_neurons_input)]
             for _ in range(self.n_neurons_output)
         ]
 
@@ -290,6 +302,8 @@ class ANN_Layer_base_python():
             raise TypeError("input_vector must be a list of lists")
         if not all(isinstance(row, list) for row in input_vector):
             raise TypeError("All elements of input_vector must be lists (rows)")
+        if not all(isinstance(val, (int, float)) for row in input_vector for val in row):
+            raise TypeError("All values in input_vector must be ints or floats")
 
         # --- Value checks ---
         if len(input_vector) == 0:
@@ -298,9 +312,9 @@ class ANN_Layer_base_python():
             raise ValueError("Each row in input_vector must contain 1 element")
 
         # --- State checks (weights and biases must be initialized before forward) ---
-        if not self.weights:
+        if self.weights is None:
             raise ValueError("Weights are not initialized. Run initialize_weights_bias() first.")
-        if not self.biases:
+        if self.biases is None:
             raise ValueError("Biases are not initialized. Run initialize_weights_bias() first.")
 
         # --- Dimension compatibility check ---
@@ -325,25 +339,29 @@ class ANN_Layer_base_python():
         """
         Compute the derivative of the activation function for each neuron
         in this layer and store them in self.activation_derivatives.
-    
+
         Returns:
         --------
         list of floats
             Activation derivatives for this layer.
         """
+        # --- State checks ---
+        if self.z_s is None:
+            raise ValueError("z_s is not computed. Run forward() first.")
+        if len(self.z_s) == 0:
+            raise ValueError("z_s is empty.")
+
         self.activation_derivatives = []
         deriv_func = self.ACTIVATION_FUNCTIONS[self.activation_function]['deriv']
         for z in self.z_s:
             # z is a single-element list [[value]], so take z[0]
-            self.activation_derivatives.append(deriv_func(z[0]))
-
+            self.activation_derivatives.append([deriv_func(z[0])])
         return self.activation_derivatives
         
     def update_parameters(self, learning_rate, l2_lambda=0.0):
         """
         Update the layer's weights and biases using the stored gradients
         with optional L2 regularization, then clear intermediate variables.
-
         Parameters:
         -----------
         learning_rate : float
@@ -351,7 +369,22 @@ class ANN_Layer_base_python():
         l2_lambda : float
             L2 regularization coefficient (weight decay). Default 0.0 (no regularization).
         """
-        if not hasattr(self, "dweights") or not hasattr(self, "dbiases"):
+        # --- Type checks ---
+        if not isinstance(learning_rate, (int, float)):
+            raise TypeError("learning_rate must be a number")
+        if not isinstance(l2_lambda, (int, float)):
+            raise TypeError("l2_lambda must be a number")
+
+        # --- Value checks ---
+        if learning_rate <= 0:
+            raise ValueError("learning_rate must be > 0")
+        if l2_lambda < 0:
+            raise ValueError("l2_lambda must be >= 0")
+
+        # --- State checks ---
+        if not hasattr(self, "dweights") or self.dweights is None:
+            raise ValueError("Gradients not computed. Run compute_gradients first.")
+        if not hasattr(self, "dbiases") or self.dbiases is None:
             raise ValueError("Gradients not computed. Run compute_gradients first.")
 
         # --- Update weights with L2 regularization ---
@@ -362,13 +395,11 @@ class ANN_Layer_base_python():
             ]
             for i in range(self.n_neurons_output)
         ]
-
         # --- Update biases (no regularization) ---
         self.biases = [
-            [self.biases[i][0] - learning_rate * self.dbiases[i]]
+            [self.biases[i][0] - learning_rate * self.dbiases[i][0]]
             for i in range(self.n_neurons_output)
         ]
-
         # --- Clean up temporary variables ---
         self.dweights = None
         self.dbiases = None
