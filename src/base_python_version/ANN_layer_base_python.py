@@ -12,9 +12,8 @@ class ANN_Layer_base_python():
             "deriv": lambda x: 1 if x > 0 else 0
         },
         "sigmoid": {
-            "func": lambda x: 1 / (1 + math.e ** (-x)),
-            "deriv": lambda x: (1 / (1 + math.e ** (-x))) *
-                               (1 - (1 / (1 + math.e ** (-x))))
+            "func": lambda x: 1 / (1 + math.exp(-x)),
+            "deriv": lambda x: (lambda s: s * (1 - s))(1 / (1 + math.exp(-x)))
         },
         "leaky_relu": {
             "func": lambda x: x if x > 0 else 0.01 * x,
@@ -204,20 +203,20 @@ class ANN_Layer_base_python():
         else:
             raise ValueError("Invalid argument for 'what'. Choose 'weights', 'biases', or 'output'.")
             
-    def initialize_weights_bias(self, seed=None):
+    def initialize_weights_bias(self, rng=None):
         """
         Initialize weights based on the activation function:
         - ReLU / Leaky ReLU → He initialization
         - Sigmoid / Tanh     → Xavier / Glorot initialization
         Biases are initialized to 0.
-
         Parameters:
         -----------
-        seed : int or None
-            Optional seed for the random number generator to make results reproducible.
+        rng : random.Random or None
+            Random number generator instance (e.g. self.rng from the parent ANN).
+            If None, a new local Random() is created (non-deterministic).
         """
-        if seed is not None:
-            random.seed(seed)
+        if rng is None:
+            rng = random.Random()
 
         # Pick initialization strategy based on activation function
         if self.activation_function in ("relu", "leaky_relu"):
@@ -229,10 +228,9 @@ class ANN_Layer_base_python():
 
         # Weight matrix: shape (n_neurons_output, n_neurons_input)
         self.weights = [
-            [random.gauss(0, std) for _ in range(self.n_neurons_input)]
+            [rng.gauss(0, std) for _ in range(self.n_neurons_input)]
             for _ in range(self.n_neurons_output)
         ]
-
         # Bias vector: shape (n_neurons_output, 1)
         self.biases = [[0.0] for _ in range(self.n_neurons_output)]
     

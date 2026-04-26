@@ -1,12 +1,12 @@
 import data_prep
 import random
-from ANN_layer import ANN_Layer
-from ANN import ANN
+from ANN_layer_base_python import ANN_Layer_base_python
+from ANN_base_python import ANN_base_python
 import math
 
 def train_real_data():
 
-    X_all, Y_all = data_prep.parse_input("../data/training_set.howlin")
+    X_all, Y_all = data_prep.parse_input("../../data/training_set.howlin")
     
     ones = sum(1 for y in Y_all if y[0][0] == 1)
     zeros = len(Y_all) - ones
@@ -42,7 +42,7 @@ def train_real_data():
     zeros_after = sum(1 for y in Y_train if y[0][0] == 0)
     print(f"After oversampling — Class 1: {ones_after}, Class 0: {zeros_after}")
 
-    ann = ANN(
+    ann = ANN_base_python(
         n_layers=4,
         n_neurons_each_layer=[27, 32, 16, 1],
         activation_hidden="leaky_relu",
@@ -158,7 +158,7 @@ def train_real_data():
     print(f"Validation accuracy: {correct}/{len(X_val)} = {correct/len(X_val):.2%}")
 
     # === TEST ACCURACY ===
-    X_test, Y_test = data_prep.parse_input("../data/homology_reduced_subset_4.howlin")
+    X_test, Y_test = data_prep.parse_input("../../data/homology_reduced_subset_4.howlin")
     correct = sum(
         1 for x, y in zip(X_test, Y_test)
         if (1 if ann.prediction(x)[0][0] >= 0.5 else 0) == y[0][0]
