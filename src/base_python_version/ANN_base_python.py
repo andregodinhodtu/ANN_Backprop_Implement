@@ -339,3 +339,29 @@ class ANN_base_python():
             if verbose:
                 print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f}")
         
+        
+Questions
+
+# DO we really need to export the model and load the learned model and evaluate the input
+
+must be a way 
+
+save the parameters to a file! adjust weights
+
+use it for our preditions 
+
+load_model fucntion
+
+ave model function
+
+
+gpu check, both using cpu!
+
+
+# We have two versions, base_python, numpy version. The testing now is done for both version since the input and output is supposed to be the same. Layer function are mainly tested!
+
+# Our project is naturally more complex, even the data structure is more complex. Our should we proceed with run time evaluation. Should we measure time to compare differente versions
+
+ru. tiem evaluation!
+        
+        
