@@ -14,17 +14,20 @@ class ANN():
     # y = true binary labels
     # y_pred = predicted probabilities after last activation (output)
 
-    # loss
-    @staticmethod
-    def binary_cross_entropy(y, y_pred):
-        y_pred = np.clip(y_pred, 1e-12, 1 - 1e-12)
-        return -np.mean(y * np.log(y_pred) + (1 - y) * np.log(1 - y_pred))
-
-    # gradient
-    @staticmethod
-    def binary_cross_entropy_deriv(y, y_pred):
-        y_pred = np.clip(y_pred, 1e-12, 1 - 1e-12)
-        return (-y / y_pred) + ((1 - y) / (1 - y_pred))
+     # Loss functions and derivatives (NumPy version)
+    LOSS_FUNCTIONS = {
+        "mse": {
+            "func": lambda y, y_pred: np.mean((y - y_pred) ** 2),
+            "deriv": lambda y, y_pred: 2 * (y_pred - y)
+        },
+        "binary_cross_entropy": {
+            "func": lambda y, y_pred: -np.mean(
+                y * np.log(np.clip(y_pred, 1e-12, 1 - 1e-12)) +
+                (1 - y) * np.log(np.clip(1 - y_pred, 1e-12, 1 - 1e-12))
+            ),
+            "deriv": lambda y, y_pred: (y_pred - y) / (np.clip(y_pred, 1e-12, 1 - 1e-12) * np.clip(1 - y_pred, 1e-12, 1 - 1e-12))
+        }
+    }
 
 
     # --------------------------------------------------------------------------
@@ -164,12 +167,9 @@ class ANN():
         a = output_layer.a_s
 
         # compute loss derivative
-        if self.loss_function == "mse":
-            loss_deriv = 2*(a - y)
-        elif self.loss_function in ["bse", "binarycrossentropy", "binary_cross_entropy"]:
-            loss_deriv = self.binary_cross_entropy_deriv(y, a)
-        else: 
-            raise ValueError("Unknown loss function.")
+        # use the selected loss function from the dictionary
+        loss_func = self.LOSS_FUNCTIONS[self.loss_function.lower()]
+        loss_deriv = loss_func["deriv"](y, a)
         
         # save delta
         output_layer.delta = loss_deriv * output_layer.activation_derivatives
@@ -348,16 +348,9 @@ class ANN():
                 P_flat = all_preds.reshape(n_samples, -1)
 
                 # calculate loss
-                if self.loss_function == "mse":
-                    epoch_loss = np.mean((P_flat - Y_flat) ** 2)
-                elif self.loss_function in ["bse", "binarycrossentropy", "binary_cross_entropy"]:
-                    epoch_loss = self.binary_cross_entropy(Y_flat, P_flat)
-                else:
-                    raise ValueError("Unknown loss function")
-
-                if verbose:
-                    print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f} - LR: {current_lr:.6f}")
-
+                loss_func = self.LOSS_FUNCTIONS[self.loss_function.lower()]
+                epoch_loss = loss_func["func"](Y_flat, P_flat)
+                print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f} - LR: {current_lr:.6f}")
 
                 
 
