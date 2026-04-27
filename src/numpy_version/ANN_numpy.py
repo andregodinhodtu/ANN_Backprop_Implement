@@ -381,7 +381,7 @@ def test_compute_gradients_batch():
     # Build a small ANN
     n_layers = 3
     n_neurons_each_layer = [X.shape[1], 5, 1]
-    ann = ANN_numpy(n_layers, n_neurons_each_layer, activation_hidden="relu", activation_output="sigmoid", loss_function="binary_cross_entropy")
+    ann = ANN(n_layers, n_neurons_each_layer, activation_hidden="relu", activation_output="sigmoid", loss_function="binary_cross_entropy")
 
     # Compute gradients for the batch
     ann.compute_gradients_batch(batch_inputs, batch_targets)

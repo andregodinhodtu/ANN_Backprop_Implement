@@ -1,10 +1,10 @@
 import numpy as np
 import data_prep_np
-from ANN import ANN
+from ANN_numpy import ANN
 
 import numpy as np
 import data_prep_np
-from ANN import ANN
+from ANN_numpy import ANN
 
 
 def train_real_data():
@@ -61,7 +61,8 @@ def train_real_data():
     def compute_loss(X, Y):
         preds = np.array([ann.prediction(x) for x in X]).reshape(len(X), -1)
         labels = Y.reshape(len(Y), -1)
-        return float(ANN.binary_cross_entropy(labels, preds))
+        loss_func = ANN.LOSS_FUNCTIONS["binary_cross_entropy"]["func"]
+        return float(loss_func(labels, preds))
 
     def compute_accuracy(X, Y):
         preds  = np.array([ann.prediction(x) for x in X]).reshape(len(X))

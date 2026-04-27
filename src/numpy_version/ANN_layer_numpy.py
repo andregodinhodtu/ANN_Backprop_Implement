@@ -189,11 +189,11 @@ class ANN_Layer_numpy():
         Parameters:
         -----------
         input_vector : np.ndarray or list of lists
-            Column vector of shape (n_neurons_input, 1).
+            Column vector of shape (n_neurons_input, 1) or batch (n_neurons_input, batch_size).
         Returns:
         --------
         np.ndarray
-            Activated output a, shape (n_neurons_output, 1).
+            Activated output a, shape (n_neurons_output, 1) or (n_neurons_output, batch_size).
         """
         # --- Type checks ---
         if not isinstance(input_vector, (list, np.ndarray)):
@@ -211,8 +211,11 @@ class ANN_Layer_numpy():
         # --- Value checks ---
         if input_vector.ndim != 2:
             raise ValueError("input_vector must be a 2D array")
-        if input_vector.shape[1] != 1:
-            raise ValueError("input_vector must have exactly 1 column")
+        if input_vector.shape[0] != self.n_neurons_input:
+            raise ValueError(
+                f"Input must have exactly {self.n_neurons_input} rows "
+                "to match the layer's input size."
+            )
 
         # --- State checks ---
         if self.weights is None:
@@ -220,14 +223,9 @@ class ANN_Layer_numpy():
         if self.biases is None:
             raise ValueError("Biases are not initialized. Run initialize_weights_bias() first.")
 
-        # --- Dimension compatibility check ---
-        if input_vector.shape[0] != self.n_neurons_input:
-            raise ValueError(
-                f"Input must have exactly {self.n_neurons_input} elements "
-                "to match the layer's input size."
-            )
-
         # Compute z = W * x + b and store for backpropagation
+        # Supports both (n_in, 1) and (n_in, batch_size)
+        # Biases will broadcast automatically
         self.z_s = self.weights @ input_vector + self.biases
 
         # Compute a = f(z) and store for backpropagation
