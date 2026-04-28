@@ -151,3 +151,15 @@ def train_real_data():
 
 if __name__ == "__main__":
     train_real_data()
+
+
+# main file structure:
+
+# train model
+
+# save the model
+
+# load the model
+
+# test model
+

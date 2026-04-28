@@ -352,7 +352,17 @@ class ANN():
                 epoch_loss = loss_func["func"](Y_flat, P_flat)
                 print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f} - LR: {current_lr:.6f}")
 
+
+# write functions:
                 
+# export final model
+
+
+
+
+# load model
+
+
 
 
 
