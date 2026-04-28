@@ -1,0 +1,9 @@
+>Model: experiment_lr0.005.txt
+>Data used to train: /Users/andregodinho/Documents/GitHub/ANN_Backprop_Implement/data/training_set.howlin
+>Number of samples: 4266
+>Epochs: 1
+>Learning rate: 0.01
+>Batch size: 32
+>Learning rate decay: 1.0
+>Decay every: 9999
+>L2 lambda: 0.0001

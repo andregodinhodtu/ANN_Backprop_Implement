@@ -3,6 +3,7 @@
 ##################################
 import random
 import math
+from pathlib import Path
 from ANN_layer_base_python import ANN_Layer_base_python
 
 
@@ -185,7 +186,20 @@ class ANN_base_python():
                 # --- Shared finish ---
                 delta = upstream * layer.activation_derivatives[j][0]   # ← [0] unwraps the column-vector cell
                 layer.delta.append(delta)
+    
+    def _save_parameters_snapshot(self):
+        """Deep-copy current weights and biases of all layers."""
+        return [(
+            [row[:] for row in layer.weights],
+            [row[:] for row in layer.biases]
+        ) for layer in self.layers]
 
+    def _restore_parameters_snapshot(self, saved):
+        """Restore a previously saved weights/biases snapshot."""
+        for layer, (w, b) in zip(self.layers, saved):
+            layer.weights = [row[:] for row in w]
+            layer.biases  = [row[:] for row in b]
+            
     def compute_gradients_sample(self, input_vector, target):
         """
         Compute gradients (dweights, dbiases) for a single training sample.
@@ -280,81 +294,138 @@ class ANN_base_python():
                 [accum_dbiases[i][j][0] / batch_size]
                 for j in range(layer.n_neurons_output)
             ]    
-        
-    def train(self, X, Y, epochs, learning_rate, batch_size, 
-              verbose, lr_decay, decay_every, l2_lambda):
+    
+    def compute_loss(self, X, Y):
+        loss_func = self.LOSS_FUNCTIONS[self.loss_function]["func"]
+    
+        # Collect all predictions and labels as the batch format expects
+        preds = [self.prediction(x) for x in X]   # each is a column vector [[v]]
+    
+        # Flatten to the [[v1], [v2], ...] format the lambda expects
+        pred_batch  = [[p[0][0]] for p in preds]
+        label_batch = [[y[0][0]] for y in Y]
+    
+        return loss_func(pred_batch, label_batch)
+     
+    def train(self, X_train, Y_train, X_val, Y_val,
+              epochs=200,
+              learning_rate=0.01,
+              batch_size=32,
+              lr_decay=0.95,
+              decay_every=20,
+              l2_lambda=1e-4,
+              patience=50,
+              verbose=True,
+              rng=None):
         """
-        Train the ANN using mini-batch gradient descent.
+        Train the ANN with mini-batch gradient descent, LR decay, and early stopping.
 
         Parameters:
         -----------
-        X : list of input column vectors
-            Shape: (n_samples, n_input, 1)
-        Y : list of target column vectors
-            Shape: (n_samples, n_output, 1)
-        epochs : int
-            Number of full passes over the dataset
-        learning_rate : float
-            Step size for gradient descent
-        batch_size : int
-            Number of samples per mini-batch
-        verbose : bool
-            If True, prints loss per epoch
+        X_train, Y_train : training data (lists of column vectors)
+        X_val, Y_val     : validation data (lists of column vectors)
+        epochs           : maximum number of epochs
+        learning_rate    : initial learning rate
+        batch_size       : mini-batch size
+        lr_decay         : multiplicative factor applied every `decay_every` epochs
+        decay_every      : LR decay frequency in epochs
+        l2_lambda        : L2 regularization coefficient
+        patience         : stop after this many epochs without val-loss improvement
+        verbose          : print per-epoch progress
+        rng              : random.Random instance for shuffling (None = new generator)
+
+        Returns:
+        --------
+        history : dict with 'train_loss' and 'val_loss' lists per epoch
         """
-        n_samples = len(X)
-        current_lr = learning_rate  # ← track current lr
-        
+        if rng is None:
+            rng = random.Random()
+
+        # --- Save hyperparameters for later (used by save_model) ---
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.lr_decay = lr_decay
         self.decay_every = decay_every
         self.l2_lambda = l2_lambda
-        self.n_samples = n_samples
+        self.n_samples = len(X_train)
+
+        # --- Early stopping state ---
+        best_val_loss = float('inf')
+        best_weights = None
+        best_epoch = 0
+        epochs_no_improve = 0
+        history = {"train_loss": [], "val_loss": []}
+
+        current_lr = learning_rate
 
         for epoch in range(1, epochs + 1):
-        
-            # Decay learning rate every N epochs
+            # LR decay
             if epoch > 1 and (epoch - 1) % decay_every == 0:
                 current_lr *= lr_decay
                 if verbose:
                     print(f"  [LR decayed to {current_lr:.6f}]")
 
-            indices = list(range(n_samples))
-            random.shuffle(indices)
-            X_shuffled = [X[i] for i in indices]
-            Y_shuffled = [Y[i] for i in indices]
+            # Shuffle and run one epoch of mini-batch SGD
+            indices = list(range(len(X_train)))
+            rng.shuffle(indices)
+            X_shuffled = [X_train[i] for i in indices]
+            Y_shuffled = [Y_train[i] for i in indices]
 
-            epoch_loss = 0.0
-
-            for start_idx in range(0, n_samples, batch_size):
-                end_idx = min(start_idx + batch_size, n_samples)
-                batch_X = X_shuffled[start_idx:end_idx]
-                batch_Y = Y_shuffled[start_idx:end_idx]
-
+            for start in range(0, len(X_train), batch_size):
+                end = min(start + batch_size, len(X_train))
+                batch_X = X_shuffled[start:end]
+                batch_Y = Y_shuffled[start:end]
                 self.compute_gradients_batch(batch_X, batch_Y)
-
                 for layer in self.layers:
-                    layer.update_parameters(current_lr, l2_lambda)  # ← use current_lr
+                    layer.update_parameters(current_lr, l2_lambda)
 
-                for x_sample, y_sample in zip(batch_X, batch_Y):
-                    pred = self.prediction(x_sample)
-                    loss = self.LOSS_FUNCTIONS[self.loss_function]["func"](pred, y_sample)
-                    epoch_loss += loss
-
-            epoch_loss /= n_samples
+            # Track losses for this epoch
+            train_loss = self.compute_loss(X_train, Y_train)
+            val_loss   = self.compute_loss(X_val, Y_val)
+            history["train_loss"].append(train_loss)
+            history["val_loss"].append(val_loss)
 
             if verbose:
-                print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f}")
-        
-    def save_model(self, output_filename, data_name, path):
-        """ Save model parameters in a consistent and replicable way"""
-        
-        # Input validation
-        if not isinstance(output_filename, str):
-            raise TypeError("Filename must be a string")
+                print(f"Epoch {epoch}/{epochs} - "
+                      f"Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f}")
 
-        with open(output_filename, "w", encoding='utf-8') as file:
+            # Early stopping
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_epoch = epoch
+                epochs_no_improve = 0
+                best_weights = self._save_parameters_snapshot()
+            else:
+                epochs_no_improve += 1
+                if epochs_no_improve >= patience:
+                    if verbose:
+                        print(f"\n*** Early stopping at epoch {epoch} "
+                              f"(best was epoch {best_epoch}) ***")
+                    break
+
+        # Restore best weights
+        if verbose:
+            print(f"\nRestoring best weights from epoch {best_epoch} "
+                  f"(val loss: {best_val_loss:.6f})")
+        self._restore_parameters_snapshot(best_weights)
+
+        return history
+        
+    def save_model(self, output_filename, data_name, path="../models"):
+        """Save model parameters in a consistent and replicable way."""
+    
+        if not isinstance(output_filename, str):
+            raise TypeError("output_filename must be a string")
+        if not isinstance(data_name, str):
+            raise TypeError("data_name must be a string")
+    
+        save_dir = Path(path)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        full_path = save_dir / output_filename
+    
+        with open(full_path, "w", encoding='utf-8') as file:
+            # --- Metadata ---
             file.write(f">Model: {output_filename}\n")
             file.write(f">Data used to train: {data_name}\n")
             file.write(f">Number of samples: {self.n_samples}\n")
@@ -364,47 +435,91 @@ class ANN_base_python():
             file.write(f">Learning rate decay: {self.lr_decay}\n")
             file.write(f">Decay every: {self.decay_every}\n")
             file.write(f">L2 lambda: {self.l2_lambda}\n")
-          
-          
-          
-if __name__ == "__main__":
-    
-    example_ANN = ANN_base_python(n_layers = 3,
-                                  n_neurons_each_layer = [2,4,1],
-                                  activation_hidden = "relu",
-                                  activation_output = "sigmoid",
-                                  loss_function = "BinaryCrossEntropy")
-                                  
-    example_ANN.save_model(output_filename = "test",
-                           data_name = "no_data_by_now",
-                           path = "relevant" )
-                                  
-    
-
-  
         
-"""Questions
-
-# DO we really need to export the model and load the learned model and evaluate the input
-
-must be a way 
-
-save the parameters to a file! adjust weights
-
-use it for our preditions 
-
-load_model fucntion
-
-ave model function
-
-
-gpu check, both using cpu!
-
-
-# We have two versions, base_python, numpy version. The testing now is done for both version since the input and output is supposed to be the same. Layer function are mainly tested!
-
-# Our project is naturally more complex, even the data structure is more complex. Our should we proceed with run time evaluation. Should we measure time to compare differente versions
-
-ru. tiem evaluation!
-        """
+            # --- Architecture ---
+            arch_str = ",".join(str(n) for n in self.n_neurons_each_layer)
+            file.write(f">N layers: {self.n_layers}\n")
+            file.write(f">Architecture: {arch_str}\n")
+            file.write(f">Activation hidden: {self.activation_hidden}\n")
+            file.write(f">Activation output: {self.activation_output}\n")
+            file.write(f">Loss function: {self.loss_function}\n")
+        
+            # --- Parameters per layer ---
+            for i, layer in enumerate(self.layers):
+                n_out = len(layer.weights)
+                n_in  = len(layer.weights[0])
+            
+                file.write(f">Layer {i} weights: {n_out}x{n_in}\n")
+                for row in layer.weights:
+                    file.write(" ".join(f"{w:.10f}" for w in row) + "\n")
+            
+                file.write(f">Layer {i} biases: {n_out}x1\n")
+                for row in layer.biases:
+                    file.write(f"{row[0]:.10f}\n")
+    
+        print(f"Model saved to: {full_path.resolve()}")
+          
+    @classmethod
+    def load_model(cls, filepath):
+        """Reconstruct an ANN from a saved model file."""
+        with open(filepath, "r", encoding='utf-8') as file:
+            lines = [line.rstrip("\n") for line in file]
+    
+        # --- First pass: parse all header lines into a dict ---
+        headers = {}
+        data_lines = []
+        for line in lines:
+            if line.startswith(">"):
+                key, _, value = line[1:].partition(":")
+                headers[key.strip()] = value.strip()
+                data_lines.append(line)  # keep position for layer parsing
+            else:
+                data_lines.append(line)
+    
+        # --- Build the model from architecture info ---
+        architecture = [int(n) for n in headers["Architecture"].split(",")]
+        print(architecture)
+        ann = cls(
+            n_layers=int(headers["N layers"]),
+            n_neurons_each_layer=architecture,
+            activation_hidden=headers["Activation hidden"],
+            activation_output=headers["Activation output"],
+            loss_function=headers["Loss function"],
+        )
+    
+        # --- Second pass: walk through lines and load weights/biases ---
+        i = 0
+        layer_idx = 0
+        while i < len(data_lines):
+            line = data_lines[i]
+        
+            if line.startswith(">Layer") and "weights" in line:
+                # Header tells us the shape: ">Layer 0 weights: 32x27"
+                shape_str = line.split(":")[1].strip()
+                n_out, n_in = (int(x) for x in shape_str.split("x"))
+            
+                # Read the next n_out lines as weight rows
+                weights = []
+                for j in range(n_out):
+                    row = [float(v) for v in data_lines[i + 1 + j].split()]
+                    weights.append(row)
+                ann.layers[layer_idx].weights = weights
+                i += 1 + n_out
+        
+            elif line.startswith(">Layer") and "biases" in line:
+                shape_str = line.split(":")[1].strip()
+                n_out, _ = (int(x) for x in shape_str.split("x"))
+            
+                biases = []
+                for j in range(n_out):
+                    biases.append([float(data_lines[i + 1 + j])])
+                ann.layers[layer_idx].biases = biases
+                i += 1 + n_out
+                layer_idx += 1
+        
+            else:
+                i += 1
+    
+        print(f"Model loaded from: {Path(filepath).resolve()}")
+        return ann
         
