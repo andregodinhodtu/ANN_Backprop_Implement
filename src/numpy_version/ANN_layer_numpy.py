@@ -155,7 +155,7 @@ class ANN_Layer_numpy():
         print(f"Biases for layer number {self.n}:")
         print(np.round(self.biases, 3)) 
                    
-    def initialize_weights_bias(self, seed=None):
+    def initialize_weights_bias(self, rng=None):
         """
         Initialize weights based on the activation function:
         - ReLU / Leaky ReLU → He initialization
@@ -167,7 +167,8 @@ class ANN_Layer_numpy():
         seed : int or None
             Optional seed for the random number generator to make results reproducible.
         """
-        rng = np.random.default_rng(seed)
+        if rng is None:
+            rng = np.random.default_rng()
 
         # Pick initialization strategy based on activation function
         if self.activation_function in ("relu", "leaky_relu"):
@@ -178,7 +179,11 @@ class ANN_Layer_numpy():
             std = np.sqrt(2 / (self.n_neurons_input + self.n_neurons_output))
 
         # Weight matrix: shape (n_neurons_output, n_neurons_input)
-        self.weights = rng.normal(0, std, size=(self.n_neurons_output, self.n_neurons_input))
+        self.weights = rng.normal(
+            loc=0.0,
+            scale=std,
+            size=(self.n_neurons_output, self.n_neurons_input)
+        )
 
         # Bias vector: shape (n_neurons_output, 1)
         self.biases = np.zeros((self.n_neurons_output, 1))
@@ -207,16 +212,26 @@ class ANN_Layer_numpy():
             
         # Convert to numpy if needed
         input_vector = np.array(input_vector)
+        
+        # --- Value checks ---
+        if len(input_vector) == 0:
+            raise ValueError("input_vector cannot be empty")
 
         # --- Value checks ---
         if input_vector.ndim != 2:
-            raise ValueError("input_vector must be a 2D array")
+                raise ValueError(
+                    f"input_vector must be 2D with shape (n_in, batch_size). "
+                    f"Got {input_vector.ndim}D array with shape {input_vector.shape}."
+                )
         if input_vector.shape[0] != self.n_neurons_input:
-            raise ValueError(
-                f"Input must have exactly {self.n_neurons_input} rows "
-                "to match the layer's input size."
-            )
+                raise ValueError(
+                    f"input_vector must have {self.n_neurons_input} rows "
+                    f"(one per input neuron), got {input_vector.shape[0]}."
+                )
 
+        if input_vector.shape[1] == 0:
+            raise ValueError("Batch size cannot be 0.")
+        
         # --- State checks ---
         if self.weights is None:
             raise ValueError("Weights are not initialized. Run initialize_weights_bias() first.")

@@ -172,19 +172,81 @@ def test_forward_wrong_type(ANN_Layer, input_vector):
 # Forward — ValueError tests
 # ============================================================
 
-@pytest.mark.parametrize("input_vector", [
-    [],                     # empty input
-    [[1, 2], [3, 4]],       # rows have more than 1 element
-    [[1], [2], [3]],        # wrong number of rows
-])
-def test_forward_wrong_values(ANN_Layer, input_vector):
-    layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
+def test_forward_wrong_row_count(ANN_Layer):
+    """Both implementations: input with wrong number of rows must raise."""
+    layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2,
+                      activation_function="relu")
     layer.weights_matrix = [[1, 0], [0, 1]]
     layer.biases_vector  = [[0], [0]]
-
+    
     with pytest.raises(ValueError):
-        layer.forward(input_vector)
+        layer.forward([[1], [2], [3]])  # 3 rows, expects 2
 
+
+def test_forward_pure_python_rejects_multi_column():
+    """Pure Python forward only accepts column vectors (one element per row)."""
+    layer = ANN_Layer_base_python(n=0, n_neurons_input=2, n_neurons_output=2,
+                                  activation_function="relu")
+    layer.weights_matrix = [[1, 0], [0, 1]]
+    layer.biases_vector  = [[0], [0]]
+    
+    with pytest.raises(ValueError):
+        layer.forward([[1, 2], [3, 4]])  # 2 elements per row
+
+
+def test_forward_empty_input(ANN_Layer):
+    """Empty input must raise in both implementations."""
+    layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2,
+                      activation_function="relu")
+    layer.weights_matrix = [[1, 0], [0, 1]]
+    layer.biases_vector  = [[0], [0]]
+    
+    with pytest.raises(ValueError):
+        layer.forward([])
+
+
+# ============================================================
+# Forward — NumPy vectorization tests
+# ============================================================
+
+def test_forward_numpy_accepts_batch():
+    """NumPy treats multi-column input as a batch of samples."""
+    layer = ANN_Layer_numpy(n=0, n_neurons_input=2, n_neurons_output=2,
+                            activation_function="relu")
+    layer.weights_matrix = [[1, 0], [0, 1]]
+    layer.biases_vector  = [[0], [0]]
+    
+    # Batch of 2 samples (each column is one sample)
+    input_batch = np.array([[1, 3],
+                            [2, 4]])
+    out = layer.forward(input_batch)
+    
+    expected = np.array([[1, 3], [2, 4]])
+    assert out.shape == (2, 2)
+    np.testing.assert_array_equal(out, expected)
+
+
+def test_forward_batch_matches_individual_calls():
+    """Batched forward must produce the same result as sample-by-sample calls."""
+    layer = ANN_Layer_numpy(n=0, n_neurons_input=3, n_neurons_output=2,
+                            activation_function="relu")
+    layer.weights_matrix = [[0.5, -1.0, 0.2], [1.0, 0.3, -0.4]]
+    layer.biases_vector  = [[0.1], [-0.2]]
+    
+    samples = [
+        np.array([[1.0], [2.0], [3.0]]),
+        np.array([[-1.0], [0.5], [2.0]]),
+        np.array([[0.0], [0.0], [0.0]]),
+        np.array([[10.0], [-5.0], [3.0]]),
+    ]
+    
+    batch = np.hstack(samples)
+    batched_output = layer.forward(batch)
+    individual_outputs = np.hstack([layer.forward(s) for s in samples])
+    
+    np.testing.assert_allclose(batched_output, individual_outputs, atol=1e-10)
+    
+        
 # ============================================================
 # Forward — state tests (base Python only)
 # ============================================================
