@@ -1,12 +1,26 @@
-import data_prep
+import sys
+import os
 import random
+
+sys.path.append("../src/base_python_version")
+sys.path.append("../src/models")
+sys.path.append("../data")
+print(sys.path)
+
+from data_input_base_python import parse_input
+
+print(sys.path)
 from ANN_layer_base_python import ANN_Layer_base_python
 from ANN_base_python import ANN_base_python
 import math
 
 def train_real_data():
-
-    X_all, Y_all = data_prep.parse_input("../../data/training_set.howlin")
+    
+    # Data Filename
+    data_filename = "training_set.howlin"
+    
+    # Data parsing
+    X_all, Y_all = parse_input(data_filename)
     
     ones = sum(1 for y in Y_all if y[0][0] == 1)
     zeros = len(Y_all) - ones
@@ -158,13 +172,17 @@ def train_real_data():
     print(f"Validation accuracy: {correct}/{len(X_val)} = {correct/len(X_val):.2%}")
 
     # === TEST ACCURACY ===
-    X_test, Y_test = data_prep.parse_input("../../data/homology_reduced_subset_4.howlin")
+    X_test, Y_test = parse_input("../../data/homology_reduced_subset_4.howlin")
     correct = sum(
         1 for x, y in zip(X_test, Y_test)
         if (1 if ann.prediction(x)[0][0] >= 0.5 else 0) == y[0][0]
     )
     print(f"Testing accuracy: {correct}/{len(X_test)} = {correct/len(X_test):.2%}")
 
+def test_model():
+    pass
+
 if __name__ == "__main__":
     train_real_data()
+    # test_model()
     

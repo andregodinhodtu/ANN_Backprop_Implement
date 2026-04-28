@@ -281,8 +281,8 @@ class ANN_base_python():
                 for j in range(layer.n_neurons_output)
             ]    
         
-    def train(self, X, Y, epochs=10, learning_rate=0.01, batch_size=1, 
-              verbose=True, lr_decay=0.95, decay_every=20, l2_lambda = 0):  # ← add these params
+    def train(self, X, Y, epochs, learning_rate, batch_size, 
+              verbose, lr_decay, decay_every, l2_lambda):
         """
         Train the ANN using mini-batch gradient descent.
 
@@ -303,6 +303,14 @@ class ANN_base_python():
         """
         n_samples = len(X)
         current_lr = learning_rate  # ← track current lr
+        
+        self.epochs = epochs
+        self.learning_rate = learning_rate
+        self.batch_size = batch_size
+        self.lr_decay = lr_decay
+        self.decay_every = decay_every
+        self.l2_lambda = l2_lambda
+        self.n_samples = n_samples
 
         for epoch in range(1, epochs + 1):
         
@@ -339,8 +347,43 @@ class ANN_base_python():
             if verbose:
                 print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f}")
         
+    def save_model(self, output_filename, data_name, path):
+        """ Save model parameters in a consistent and replicable way"""
         
-Questions
+        # Input validation
+        if not isinstance(output_filename, str):
+            raise TypeError("Filename must be a string")
+
+        with open(output_filename, "w", encoding='utf-8') as file:
+            file.write(f">Model: {output_filename}\n")
+            file.write(f">Data used to train: {data_name}\n")
+            file.write(f">Number of samples: {self.n_samples}\n")
+            file.write(f">Epochs: {self.epochs}\n")
+            file.write(f">Learning rate: {self.learning_rate}\n")
+            file.write(f">Batch size: {self.batch_size}\n")
+            file.write(f">Learning rate decay: {self.lr_decay}\n")
+            file.write(f">Decay every: {self.decay_every}\n")
+            file.write(f">L2 lambda: {self.l2_lambda}\n")
+          
+          
+          
+if __name__ == "__main__":
+    
+    example_ANN = ANN_base_python(n_layers = 3,
+                                  n_neurons_each_layer = [2,4,1],
+                                  activation_hidden = "relu",
+                                  activation_output = "sigmoid",
+                                  loss_function = "BinaryCrossEntropy")
+                                  
+    example_ANN.save_model(output_filename = "test",
+                           data_name = "no_data_by_now",
+                           path = "relevant" )
+                                  
+    
+
+  
+        
+"""Questions
 
 # DO we really need to export the model and load the learned model and evaluate the input
 
@@ -363,5 +406,5 @@ gpu check, both using cpu!
 # Our project is naturally more complex, even the data structure is more complex. Our should we proceed with run time evaluation. Should we measure time to compare differente versions
 
 ru. tiem evaluation!
-        
+        """
         

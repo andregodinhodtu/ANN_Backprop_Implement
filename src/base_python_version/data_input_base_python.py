@@ -27,13 +27,6 @@ def load_and_split(filename, batch_size):
         
         yield input_batch, labels_batch
 
-
-
-    
-    
-
-
-
 # INPUT PREPARATION by subsets
 
 def parse_input(filename, start=None, end=None):
@@ -90,8 +83,6 @@ def iterate_input(filename, start=None, end=None):
             parsed = parse_line(line)
             yield parsed 
 
-
-
 def parse_line(line):
 
     """Takes a line from a file and parses it into an value and label.
@@ -105,9 +96,6 @@ def parse_line(line):
     label = [int(line_parts[-1])]
 
     return value, label
-
-
-
 
 
 # make a file of all training data (discarded, one-use)
