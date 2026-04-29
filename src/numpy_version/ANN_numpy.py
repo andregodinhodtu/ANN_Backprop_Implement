@@ -23,7 +23,7 @@ class ANN_numpy():
         },
     }
     def __init__(self, n_layers, n_neurons_each_layer, activation_hidden,
-                 activation_output, loss_function, seed = None):
+                 activation_output, loss_function, rng = None):
 
         """
         Build a feedforward neural network with n_layers.
@@ -79,11 +79,12 @@ class ANN_numpy():
         self.activation_hidden = activation_hidden
         self.activation_output = activation_output
         self.loss_function = loss_function
-        self.seed = seed
+        self.rng = rng
 
         # Dedicated RNG so this network's randomness is isolated from
         # the global random state (good practice).
-        self.rng = np.random.default_rng(seed)
+        if self.rng is None:
+            self.rng = np.random.default_rng()
 
         # Layers container
         self.layers = []

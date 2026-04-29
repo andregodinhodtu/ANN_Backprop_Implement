@@ -85,7 +85,8 @@ def create_model(n_layers,
         n_neurons_each_layer=n_neurons_each_layer,
         activation_hidden=activation_hidden,
         activation_output=activation_output,
-        loss_function=loss_function
+        loss_function=loss_function,
+        rng = rng
     )
     return ann
 
@@ -120,7 +121,7 @@ def train_model(ann, X_train, Y_train, X_val, Y_val,
         lr_decay=lr_decay,
         decay_every=decay_every,
         l2_lambda=l2_lambda,
-        patience=patience
+        patience=patience,
     )
     
     # === REPORT RESULTS ===
@@ -146,7 +147,7 @@ def test_model():
 if __name__ == "__main__":
     
     # Data Handling train and validation sets
-    X_train, Y_train, X_val, Y_val, rng = train_data_handling(seed=40, train_ratio = 0.85)
+    X_train, Y_train, X_val, Y_val, rng = train_data_handling(seed=42, train_ratio = 0.85)
     
     
     # Create Neural Network

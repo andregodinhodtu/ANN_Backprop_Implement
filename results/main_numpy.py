@@ -26,101 +26,7 @@ from evaluate import report_results, evaluate
 assert TRAIN_DATA_FILE.exists(), f"Train data file not found at: {TRAIN_DATA_FILE}"
 assert TEST_DATA_FILE.exists(), f"Test data not found at: {TEST_DATA_FILE}"
 
-def train_real_data():
-
-
-    # helpers
-    def compute_loss(X, Y):
-        preds = np.array([ann.prediction(x) for x in X]).reshape(len(X), -1)
-        labels = Y.reshape(len(Y), -1)
-        loss_func = ANN.LOSS_FUNCTIONS["binary_cross_entropy"]["func"]
-        return float(loss_func(labels, preds))
-
-    def compute_accuracy(X, Y):
-        preds  = np.array([ann.prediction(x) for x in X]).reshape(len(X))
-        labels = Y.reshape(len(Y))
-        return np.mean((preds >= 0.5).astype(int) == labels.astype(int))
-
-    def save_weights():
-        return [(layer.weights.copy(), layer.biases.copy()) for layer in ann.layers]
-
-    def restore_weights(saved):
-        for layer, (w, b) in zip(ann.layers, saved):
-            layer.weights = w.copy()
-            layer.biases  = b.copy()
-
-    # training loop - early stopping
-    print("\n--- TRAINING START ---\n")
-
-    best_val_loss      = float("inf")
-    best_weights       = None
-    best_epoch         = 0
-    patience           = 50
-    epochs_no_improve  = 0
-    current_lr         = 0.01
-    total_epochs       = 201
-
-    for epoch in range(1, total_epochs):
-
-        # LR decay
-        if epoch > 1 and (epoch - 1) % 20 == 0:
-            current_lr *= 0.95
-            print(f"  [LR decayed to {current_lr:.6f}]")
-
-        ann.train(
-            X_train, Y_train,
-            epochs=1,
-            learning_rate=current_lr,
-            batch_size=32,
-            verbose=False,
-            lr_decay=1.0,
-            decay_every=9999,
-            l2_lambda=1e-4,
-        )
-
-        train_loss = compute_loss(X_train, Y_train)
-        val_loss   = compute_loss(X_val,   Y_val)
-        print(f"Epoch {epoch}/{total_epochs-1} — "
-              f"Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f}")
-
-        if val_loss < best_val_loss:
-            best_val_loss     = val_loss
-            best_epoch        = epoch
-            epochs_no_improve = 0
-            best_weights      = save_weights()
-        else:
-            epochs_no_improve += 1
-            if epochs_no_improve >= patience:
-                print(f"\n*** Early stopping at epoch {epoch} "
-                      f"(best was epoch {best_epoch}) ***")
-                break
-
-    print(f"\nRestoring best weights from epoch {best_epoch} "
-          f"(val loss: {best_val_loss:.6f})")
-    restore_weights(best_weights)
-
-    # sample predictions
-    print("\nSample predictions AFTER training (first 20 training samples):")
-    for x, y in zip(X_train[:20], Y_train[:20]):
-        prob  = ann.prediction(x).item()
-        label = int(y.flat[0])
-        print(f"  pred: {prob:.3f}  label: {label}")
-
-    # accuracy ?
-    train_acc = compute_accuracy(X_train, Y_train)
-    val_acc   = compute_accuracy(X_val,   Y_val)
-    print(f"\nTraining   accuracy: {train_acc:.2%} ({int(train_acc*len(X_train))}/{len(X_train)})")
-    print(f"Validation accuracy: {val_acc:.2%}   ({int(val_acc*len(X_val))}/{len(X_val)})")
-
-    X_test_raw, y_test_raw = parse_input(
-        "data/homology_reduced_subset_4.howlin")
-    X_test = X_test_raw.reshape(-1, 27, 1).astype(np.float32)
-    Y_test = y_test_raw.reshape(-1, 1, 1).astype(np.float32)
-
-    test_acc = compute_accuracy(X_test, Y_test)
-    print(f"Test       accuracy: {test_acc:.2%}   ({int(test_acc*len(X_test))}/{len(X_test)})")
-
-def train_data_handling(seed=42, train_ratio=0.85):
+def train_data_handling(seed=None, train_ratio=0.85):
     rng = np.random.default_rng(seed)
 
     # Data parsing
@@ -128,7 +34,6 @@ def train_data_handling(seed=42, train_ratio=0.85):
     # X_all shape: (n_samples, n_features)
     # Y_all shape: (n_samples,) or (n_samples, 1)
 
-    print(X_all)
     ones  = int(np.sum(Y_all == 1))
     zeros = len(Y_all) - ones
     print(f"Class 1: {ones}, Class 0: {zeros}, Ratio: {ones / len(Y_all):.2%}")
@@ -172,11 +77,12 @@ def test_data_handling():
     X_test, Y_test = parse_input(str(TEST_DATA_FILE))
     return X_test, Y_test
     
-def create_model(n_layers=4,
-                 n_neurons_each_layer=None,
-                 activation_hidden="leaky_relu",
-                 activation_output="sigmoid",
-                 loss_function="BinaryCrossEntropy"):
+def create_model(n_layers,
+                 n_neurons_each_layer,
+                 activation_hidden,
+                 activation_output,
+                 loss_function,
+                 rng):
     """
     Build and return an untrained ANN with the chosen architecture.
     """
@@ -186,10 +92,14 @@ def create_model(n_layers=4,
         activation_hidden=activation_hidden,
         activation_output=activation_output,
         loss_function=loss_function,
+        rng = rng
     )
     return ann
 
 def train_model(ann, X_train, Y_train, X_val, Y_val,
+                data_name = None,
+                model_name=None,
+                save_path="../models",
                 epochs=200,
                 learning_rate=0.01,
                 batch_size=32,
@@ -206,7 +116,7 @@ def train_model(ann, X_train, Y_train, X_val, Y_val,
     
     # Auto-generate a timestamped name if none provided
     if model_name is None:
-        model_name = f"base_python_model_{datetime.now():%Y%m%d_%H%M%S}.txt"
+        model_name = f"numpy_model_{datetime.now():%Y%m%d_%H%M%S}.txt"
     
     # === TRAIN ===
     history = ann.train(
@@ -225,7 +135,7 @@ def train_model(ann, X_train, Y_train, X_val, Y_val,
     #report_results(ann, X_train, Y_train, X_val, Y_val, threshold=0.5)
     
     # === SAVE MODEL ===
-    #ann.save_model(model_name, data_name, save_path)
+    ann.save_model(model_name, data_name, save_path)
     
     return history
 
@@ -252,21 +162,22 @@ if __name__ == "__main__":
                        n_neurons_each_layer=[27, 32, 16, 1],
                        activation_hidden="relu",
                        activation_output="sigmoid",
-                       loss_function="binarycrossentropy")
+                       loss_function="binarycrossentropy",
+                       rng = rng)
     
-    
-    # Train the model
-    #train_model(ann, X_train, Y_train, X_val, Y_val,
-                #epochs=200,
-                #learning_rate=0.01,
-                #batch_size=32,
-                #lr_decay=0.95,
-                #decay_every=20,
-                #l2_lambda=1e-4,
-                #patience=50,
-                #verbose=True)
                 
-    ann.train(X_train, Y_train, X_val, Y_val)
+    # Train the model
+    train_model(ann, X_train, Y_train, X_val, Y_val,
+                data_name = str(TRAIN_DATA_FILE),
+                model_name=None,
+                save_path="../models",
+                epochs=200,
+                learning_rate=0.01,
+                batch_size=32,
+                lr_decay=0.95,
+                decay_every=20,
+                l2_lambda=1e-4,
+                patience=50)
                 
                 
     """

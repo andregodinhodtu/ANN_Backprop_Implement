@@ -82,7 +82,8 @@ class ANN_base_python():
         
         # Dedicated RNG so this network's randomness is isolated from
         # the global random state (good practice).
-        self.rng = random.Random()
+        if self.rng is None:
+            self.rng = random.Random()
         
         # Layers container
         self.layers = []
@@ -161,6 +162,15 @@ class ANN_base_python():
         return working_vector
         
     def _compute_deltas(self, y):
+        """
+        Compute delta values for each layer (backward pass).
+        Stores them in each layer's `.delta` attribute.
+
+        Parameters:
+        -----------
+        y : list of lists
+            Target output column vector (shape: n_output x 1).
+        """
         expected = self.layers[-1].n_neurons_output
         if len(y) != expected:
             raise ValueError(
@@ -182,7 +192,7 @@ class ANN_base_python():
             if is_output and self.loss_function == "binarycrossentropy" \
                          and layer.activation_function == "sigmoid":
                 for j in range(layer.n_neurons_output):
-                    delta = layer.a_s[j][0] - y[j][0]    # the simplified form
+                    delta = layer.a_s[j][0] - y[j][0]
                     layer.delta.append(delta)
                 continue   # skip the generic path for this layer
 
@@ -191,7 +201,7 @@ class ANN_base_python():
 
             for j in range(layer.n_neurons_output):
                 if is_output:
-                    upstream = loss_deriv(layer.a_s[j][0], y[j][0])
+                    upstream = loss_deriv(y[j][0], layer.a_s[j][0])
                 else:
                     next_layer = self.layers[i + 1]
                     upstream = sum(
@@ -199,50 +209,6 @@ class ANN_base_python():
                         for k in range(next_layer.n_neurons_output)
                     )
 
-                delta = upstream * layer.activation_derivatives[j]
-                layer.delta.append(delta)
-        """
-        Compute delta values for each layer (backward pass).
-        Stores them in each layer's `.delta` attribute.
-
-        Parameters:
-        -----------
-        y : list of lists
-            Target output column vector (shape: n_output x 1).
-        """
-        # --- Shape check on y ---
-        expected = self.layers[-1].n_neurons_output
-        if len(y) != expected:
-            raise ValueError(
-                f"y has {len(y)} elements, expected {expected} (output layer size)."
-            )
-
-        loss_deriv = self.LOSS_FUNCTIONS[self.loss_function]["deriv"]
-
-        # Iterate layers from output back to input
-        for i in reversed(range(len(self.layers))):
-            layer = self.layers[i]
-
-            # --- Shared setup ---
-            layer.compute_activation_derivatives()
-            layer.delta = []
-
-            is_output = (i == len(self.layers) - 1)
-
-            for j in range(layer.n_neurons_output):
-                # --- The one thing that differs: where upstream signal comes from ---
-                if is_output:
-                    # dL/da for output neuron j
-                    upstream = loss_deriv(layer.a_s[j][0], y[j][0])
-                else:
-                    # Sum_k delta_next[k] * W_next[k][j]
-                    next_layer = self.layers[i + 1]
-                    upstream = sum(
-                        next_layer.delta[k] * next_layer.weights[k][j]
-                        for k in range(next_layer.n_neurons_output)
-                    )
-
-                # --- Shared finish ---
                 delta = upstream * layer.activation_derivatives[j]
                 layer.delta.append(delta)
     
