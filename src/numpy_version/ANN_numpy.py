@@ -1,45 +1,34 @@
 import random
 import numpy as np
 import data_prep_np
+from pathlib import Path
 from ANN_layer_numpy import ANN_Layer_numpy
 
-class ANN():
+class ANN_numpy():
 
     """ANN algorithm with backpropagation made specifically for binary classification.
     This version utilizes NumPy for maximum efficiency and clarity. """
 
-    # -----------------------------------------------------------------------------
-
-    # binary cross entropy for binary classification problem
-    # y = true binary labels
-    # y_pred = predicted probabilities after last activation (output)
-
-     # Loss functions and derivatives (NumPy version)
     LOSS_FUNCTIONS = {
         "mse": {
-            "func": lambda y, y_pred: np.mean((y - y_pred) ** 2),
-            "deriv": lambda y, y_pred: 2 * (y_pred - y)
+            "func":  lambda y_true, y_pred: (y_pred - y_true) ** 2,
+            "deriv": lambda y_true, y_pred: 2 * (y_pred - y_true),
         },
         "binary_cross_entropy": {
-            "func": lambda y, y_pred: -np.mean(
-                y * np.log(np.clip(y_pred, 1e-12, 1 - 1e-12)) +
-                (1 - y) * np.log(np.clip(1 - y_pred, 1e-12, 1 - 1e-12))
+            "func": lambda y_true, y_pred: -(
+                y_true       * np.log(np.clip(y_pred,     1e-12, 1 - 1e-12)) +
+                (1 - y_true) * np.log(np.clip(1 - y_pred, 1e-12, 1 - 1e-12))
             ),
-            "deriv": lambda y, y_pred: (y_pred - y) / (np.clip(y_pred, 1e-12, 1 - 1e-12) * np.clip(1 - y_pred, 1e-12, 1 - 1e-12))
-        }
+            "deriv": lambda y_true, y_pred:
+                (y_pred - y_true) /
+                (np.clip(y_pred, 1e-12, 1 - 1e-12) * np.clip(1 - y_pred, 1e-12, 1 - 1e-12)),
+        },
     }
-
-
-    # --------------------------------------------------------------------------
-    # INITIALIZATION
-
-
-    def __init__(self, n_layers, n_neurons_each_layer, activation_hidden="relu",
-                 activation_output="sigmoid", loss_function="mse"):
+    def __init__(self, n_layers, n_neurons_each_layer, activation_hidden,
+                 activation_output, loss_function, seed = None):
 
         """
         Build a feedforward neural network with n_layers.
-    
         Parameters:
         -----------
         n_layers : int
@@ -52,6 +41,9 @@ class ANN():
             Activation function for the output layer.
         loss_function : str
             Loss function to use.
+        seed : int or None, optional
+            Random seed for reproducible weight initialization.
+            If None, randomness is non-deterministic.
         """
 
               # Input validation
@@ -70,7 +62,6 @@ class ANN():
         self.layers = []
         self._build_ANN()
         
-
     def _build_ANN(self):
         """Private method to construct the layers of the network with Numpy-based ANN Layer."""
         for i in range(self.n_layers -1):
@@ -94,10 +85,6 @@ class ANN():
             
             # Add to layers list
             self.layers.append(layer)
-
-
-    # ----------------------------------------------------------------------------
-    # PREDICTION (single sample) as a reference
             
     def prediction(self, input_vector):
 
@@ -112,13 +99,6 @@ class ANN():
             x = layer(x)
         return x
     
-
-
-    # FORWARD PASS - prediction over a full batch at once
-
-    # X : np.ndarray, shape (n_samples, n_input, 1) (what train() takes)
-    # transposed to (n_input, n_samples)
-
     def _forward_batch(self, input_batch):
 
         """
@@ -133,19 +113,6 @@ class ANN():
         for layer in self.layers:
             x = layer(x) # works with any 2d input
         return x
-
-    
-
-    # -----------------------------------------------------------------------------
-    # BACPROPAGATION
-
-    # chain rule:
-    # 
-    #  delta of the node = deriv of the loss function for this node   * derivative of act.func(z of this node)
-    # 
-    #  derivative of a weight =  delta * output a of the connected node in a previous layer
-    #  derivative of a bias = delta
-
        
     def _compute_deltas(self, y_batch):
         """
@@ -189,7 +156,6 @@ class ANN():
             weighted_sum = np.dot(next_layer.weights.T, next_layer.delta)
             layer.delta = weighted_sum * layer.activation_derivatives
         
-    # compute 1 sample (func used only as a reference)
     def compute_gradients_sample(self, input_vector, target):
         """
         Computes gradients (dweights and dbiases) for a single training sample using NumPy.
@@ -221,7 +187,6 @@ class ANN():
            # print(layer.dweights.shape)
            # print(layer.dbiases.shape)
             
-
     def compute_gradients_batch(self, batch_inputs, batch_targets):
 
         """
@@ -256,20 +221,6 @@ class ANN():
 
             layer.dweights = np.dot(layer.delta, prev_a.T) / batch_size
             layer.dbiases  = layer.delta.mean(axis=1, keepdims=True)
-
-
-
-        
-
-
-
-
-        
-
-# -----------------------------------------------------------------------------      
-# TRAINING
-
-    # mini-batch gradient descent
 
     def train(self, X, Y, epochs=10, learning_rate=0.01, batch_size=1, 
               verbose=True, lr_decay=0.95, decay_every=20, l2_lambda=0):
@@ -352,56 +303,18 @@ class ANN():
                 epoch_loss = loss_func["func"](Y_flat, P_flat)
                 print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f} - LR: {current_lr:.6f}")
 
+    def save_model():
+        pass
+    
+    @classmethod
+    def load_model(cls, filepath):
+        pass
+        
+    def compute_loss(self, X, Y):
+        pass
+    
+    def _save_parameters_snapshot(self):
+        """Deep-copy current weights and biases of all layers."""
 
-# write functions:
-                
-# export final model
-
-
-
-
-# load model
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# test 
-
-
-def test_compute_gradients_batch():
-    # Load a small batch from your data file
-    filename = "data/training_set.howlin"
-    X, y = data_prep_np.parse_input(filename, start=0, end=4)  # 4 samples
-
-    # Reshape X and y for ANN input: (batch_size, n_input, 1)
-    batch_inputs = [X[i].reshape(-1, 1) for i in range(X.shape[0])]
-    batch_targets = [np.array([[y[i]]]) for i in range(y.shape[0])]
-
-    # Build a small ANN
-    n_layers = 3
-    n_neurons_each_layer = [X.shape[1], 5, 1]
-    ann = ANN(n_layers, n_neurons_each_layer, activation_hidden="relu", activation_output="sigmoid", loss_function="binary_cross_entropy")
-
-    # Compute gradients for the batch
-    ann.compute_gradients_batch(batch_inputs, batch_targets)
-
-    # Print gradients for each layer
-    for i, layer in enumerate(ann.layers):
-        print(f"Layer {i+1} dweights shape: {layer.dweights.shape}")
-        print(f"Layer {i+1} dbiases shape: {layer.dbiases.shape}")
-        #print(f"Layer {i+1} dweights (preview):\n{layer.dweights}")
-        #print(f"Layer {i+1} dbiases (preview):\n{layer.dbiases}\n")
-
-if __name__ == "__main__":
-    test_compute_gradients_batch()
+    def _restore_parameters_snapshot(self, saved):
+        """Restore a previously saved weights/biases snapshot."""

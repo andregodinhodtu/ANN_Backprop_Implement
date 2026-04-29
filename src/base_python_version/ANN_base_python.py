@@ -1,6 +1,3 @@
-##################################
-# Build Aritificial Neural Network
-##################################
 import random
 import math
 from pathlib import Path
@@ -8,20 +5,21 @@ from ANN_layer_base_python import ANN_Layer_base_python
 
 
 class ANN_base_python():
- 
+    
     LOSS_FUNCTIONS = {
         "MSE": {
-            "func": lambda x, y: sum(
-                (x[i][0] - y[i][0]) ** 2 for i in range(len(x))
-            ),
-            "deriv": lambda x, y: 2 * (x - y)
+            "func":  lambda y_true, y_pred: (y_pred - y_true) ** 2,
+            "deriv": lambda y_true, y_pred: 2 * (y_pred - y_true),
         },
-        "BinaryCrossEntropy" : {
-            "func": lambda x, y: sum( - (y[i][0] * math.log(max(x[i][0], 1e-15)) +
-                                    (1 - y[i][0]) * math.log(max(1 - x[i][0], 1e-15)))
-                                    for i in range(len(x))) / len(x),  # divide by N
-            "deriv": lambda x, y: (x - y) / (x * (1 - x) + 1e-15)
-        }
+        "BinaryCrossEntropy": {
+            # Per-neuron formula. Both args are scalars.
+            "func":  lambda y_true, y_pred: -(
+                y_true * math.log(max(y_pred, 1e-15)) +
+                (1 - y_true) * math.log(max(1 - y_pred, 1e-15))
+            ),
+            "deriv": lambda y_true, y_pred:
+                (y_pred - y_true) / (y_pred * (1 - y_pred) + 1e-15),
+        },
     }
         
     def __init__(self, n_layers, n_neurons_each_layer, activation_hidden,
@@ -296,16 +294,34 @@ class ANN_base_python():
             ]    
     
     def compute_loss(self, X, Y):
+        """
+        Compute the mean loss across a batch of samples.
+
+        Parameters:
+        -----------
+        X : list of (list of lists)
+            Batch of input column vectors.
+        Y : list of (list of lists)
+            Batch of target column vectors, shape (n_output, 1) each.
+
+        Returns:
+        --------
+        float
+            Mean loss across the batch (averaged over samples and output neurons).
+        """
         loss_func = self.LOSS_FUNCTIONS[self.loss_function]["func"]
-    
-        # Collect all predictions and labels as the batch format expects
-        preds = [self.prediction(x) for x in X]   # each is a column vector [[v]]
-    
-        # Flatten to the [[v1], [v2], ...] format the lambda expects
-        pred_batch  = [[p[0][0]] for p in preds]
-        label_batch = [[y[0][0]] for y in Y]
-    
-        return loss_func(pred_batch, label_batch)
+
+        total_loss = 0.0
+        for x, y in zip(X, Y):
+            y_pred = self.prediction(x)              # column vector (n_output, 1)
+            n = len(y)
+            # Mean per-neuron loss for this sample
+            sample_loss = sum(
+                loss_func(y[i][0], y_pred[i][0]) for i in range(n)
+            ) / n
+            total_loss += sample_loss
+
+        return total_loss / len(X)
      
     def train(self, X_train, Y_train, X_val, Y_val,
               epochs=200,
