@@ -52,7 +52,7 @@ class ANN_base_python():
         if activation_hidden not in ANN_Layer_base_python.ACTIVATION_FUNCTIONS:
             raise ValueError(
                 f"Unknown hidden activation: {activation_hidden!r}. "
-                f"Choose from {list(ACTIVATION_FUNCTIONS)}"
+                f"Choose from {list(ANN_Layer_base_python.ACTIVATION_FUNCTIONS)}"
             )
         if activation_output not in ANN_Layer_base_python.ACTIVATION_FUNCTIONS:
             raise ValueError(
