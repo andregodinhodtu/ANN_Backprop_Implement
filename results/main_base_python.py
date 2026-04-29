@@ -71,11 +71,12 @@ def test_data_handling():
     X_test, Y_test = parse_input(str(TEST_DATA_FILE))
     return X_test, Y_test
     
-def create_model(n_layers=4,
-                 n_neurons_each_layer=None,
-                 activation_hidden="leaky_relu",
-                 activation_output="sigmoid",
-                 loss_function="BinaryCrossEntropy"):
+def create_model(n_layers,
+                 n_neurons_each_layer,
+                 activation_hidden,
+                 activation_output,
+                 loss_function,
+                 rng):
     """
     Build and return an untrained ANN with the chosen architecture.
     """
@@ -84,11 +85,11 @@ def create_model(n_layers=4,
         n_neurons_each_layer=n_neurons_each_layer,
         activation_hidden=activation_hidden,
         activation_output=activation_output,
-        loss_function=loss_function,
+        loss_function=loss_function
     )
     return ann
 
-def train_model(ann, X_train, Y_train, X_val, Y_val, rng,
+def train_model(ann, X_train, Y_train, X_val, Y_val,
                 data_name = None,
                 model_name=None,
                 save_path="../models",
@@ -119,8 +120,7 @@ def train_model(ann, X_train, Y_train, X_val, Y_val, rng,
         lr_decay=lr_decay,
         decay_every=decay_every,
         l2_lambda=l2_lambda,
-        patience=patience,
-        rng=rng,
+        patience=patience
     )
     
     # === REPORT RESULTS ===
@@ -146,7 +146,7 @@ def test_model():
 if __name__ == "__main__":
     
     # Data Handling train and validation sets
-    X_train, Y_train, X_val, Y_val, rng = train_data_handling(seed=42, train_ratio = 0.85)
+    X_train, Y_train, X_val, Y_val, rng = train_data_handling(seed=40, train_ratio = 0.85)
     
     
     # Create Neural Network
@@ -154,13 +154,12 @@ if __name__ == "__main__":
                        n_neurons_each_layer=[27, 32, 16, 1],
                        activation_hidden="relu",
                        activation_output="sigmoid",
-                       loss_function="BinaryCrossEntropy")
-                       
-    print(ann.n_layers)
+                       loss_function="binarycrossentropy",
+                       rng = rng)
     
-    """
+    
     # Train the model
-    train_model(ann, X_train, Y_train, X_val, Y_val, rng,
+    train_model(ann, X_train, Y_train, X_val, Y_val,
                 data_name = str(TRAIN_DATA_FILE),
                 model_name=None,
                 save_path="../models",
@@ -173,11 +172,11 @@ if __name__ == "__main__":
                 patience=50)
     
     # test_model()
-    ann_test = ANN_base_python.load_model(MODEL_FOLDER / "model_20260428_183826.txt")
+    #ann_test = ANN_base_python.load_model(MODEL_FOLDER / "model_20260428_183826.txt")
     
-    X_test, Y_test = test_data_handling()
+    #X_test, Y_test = test_data_handling()
     
-    evaluate(ann_test, X_test, Y_test, name=str(TEST_DATA_FILE))"""
+    #evaluate(ann_test, X_test, Y_test, name=str(TEST_DATA_FILE))"""
     
     
     
