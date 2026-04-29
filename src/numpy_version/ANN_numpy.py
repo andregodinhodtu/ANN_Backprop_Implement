@@ -1,6 +1,5 @@
 import random
 import numpy as np
-import data_prep_np
 from pathlib import Path
 from ANN_layer_numpy import ANN_Layer_numpy
 
@@ -14,7 +13,7 @@ class ANN_numpy():
             "func":  lambda y_true, y_pred: (y_pred - y_true) ** 2,
             "deriv": lambda y_true, y_pred: 2 * (y_pred - y_true),
         },
-        "binary_cross_entropy": {
+        "binarycrossentropy": {
             "func": lambda y_true, y_pred: -(
                 y_true       * np.log(np.clip(y_pred,     1e-12, 1 - 1e-12)) +
                 (1 - y_true) * np.log(np.clip(1 - y_pred, 1e-12, 1 - 1e-12))
@@ -45,25 +44,57 @@ class ANN_numpy():
             Random seed for reproducible weight initialization.
             If None, randomness is non-deterministic.
         """
-
-              # Input validation
-        if n_layers <= 0:
-            raise ValueError("n_layers must be > 0")
+        # Input validation
+        if n_layers < 2:
+            raise ValueError("n_layers must be >= 2 (input + output)")
         if len(n_neurons_each_layer) != n_layers:
             raise ValueError("Length of n_neurons_each_layer must equal n_layers")
-    
-        # Store activation functions and loss
+        if any(n <= 0 for n in n_neurons_each_layer):
+            raise ValueError("All layer sizes must be > 0")
+        if activation_hidden not in ANN_Layer_numpy.ACTIVATION_FUNCTIONS:
+            raise ValueError(
+                f"Unknown hidden activation: {activation_hidden!r}. "
+                f"Choose from {list(ANN_Layer_numpy.ACTIVATION_FUNCTIONS)}"
+            )
+        if activation_output not in ANN_Layer_numpy.ACTIVATION_FUNCTIONS:
+            raise ValueError(
+                f"Unknown output activation: {activation_output!r}. "
+                f"Choose from {list(ANN_Layer_numpy.ACTIVATION_FUNCTIONS)}"
+            )
+
+        if loss_function == "binarycrossentropy" and activation_output != "sigmoid":
+            raise ValueError(
+                "binary_cross_entropy requires sigmoid output activation. "
+                f"Got {activation_output!r}."
+            )
+
+        if loss_function not in self.LOSS_FUNCTIONS:
+            raise ValueError(
+                f"Unknown loss function: {loss_function!r}. "
+                f"Choose from {list(self.LOSS_FUNCTIONS)}"
+            )
+
+        # Store config
         self.n_layers = n_layers
         self.n_neurons_each_layer = n_neurons_each_layer
         self.activation_hidden = activation_hidden
         self.activation_output = activation_output
         self.loss_function = loss_function
+        self.seed = seed
 
+        # Dedicated RNG so this network's randomness is isolated from
+        # the global random state (good practice).
+        self.rng = np.random.default_rng(seed)
+
+        # Layers container
         self.layers = []
+
+        # Build layers
         self._build_ANN()
         
     def _build_ANN(self):
         """Private method to construct the layers of the network with Numpy-based ANN Layer."""
+        
         for i in range(self.n_layers -1):
             # Number of inputs for this layer
             n_input = self.n_neurons_each_layer[i]
@@ -81,22 +112,62 @@ class ANN_numpy():
             )
             
             # Initialize weights and biases (optional fixed seed)
-            layer.initialize_weights_bias(seed=42 +i)
+            layer.initialize_weights_bias(self.rng)
             
             # Add to layers list
             self.layers.append(layer)
             
     def prediction(self, input_vector):
+        """
+        Forward pass through the entire network.
 
+        Accepts a single sample or a batch and returns the network's output(s).
+        Thanks to vectorization, the same code path handles both cases — the
+        shape simply propagates through each layer.
 
-        x = np.array(input_vector)
-        if x.ndim == 1:
-            x = x.reshape(-1, 1)
-            # shape stays (n_features, 1)
+        Parameters:
+        -----------
+        input_vector : np.ndarray
+            Input to the network. Must be a 2D array with shape:
+              - (n_features, 1)             → single sample as column vector
+              - (n_features, batch_size)    → batch of samples as column vectors
 
-        # foward pass by calling layer
+        Returns:
+        --------
+        np.ndarray
+            Network output, shape (n_output, batch_size). For a single sample,
+            batch_size is 1, so the shape is (n_output, 1).
+        """
+        # --- Type check ---
+        if not isinstance(input_vector, np.ndarray):
+            raise TypeError("input_vector must be a numpy.ndarray")
+        if not np.issubdtype(input_vector.dtype, np.number):
+            raise TypeError("input_vector must contain numeric values")
+
+        # --- Shape checks ---
+        if input_vector.ndim != 2:
+            raise ValueError(
+                f"input_vector must be 2D with shape (n_features, batch_size); "
+                f"got {input_vector.ndim}D shape {input_vector.shape}."
+            )
+        if input_vector.shape[1] == 0:
+            raise ValueError("input_vector has 0 samples (batch_size must be >= 1).")
+
+        # --- Dimension check against network's expected input size ---
+        expected = self.n_neurons_each_layer[0]
+        if input_vector.shape[0] != expected:
+            raise ValueError(
+                f"input_vector has {input_vector.shape[0]} features along axis 0, "
+                f"but the network expects {expected}. "
+                f"If your batch is shaped (batch_size, n_features), transpose with .T"
+            )
+
+        # --- Forward pass through all layers ---
+        x = input_vector
         for layer in self.layers:
+            # Use the layer's __call__ to do forward pass and activation
             x = layer(x)
+
         return x
     
     def _forward_batch(self, input_batch):
@@ -155,7 +226,20 @@ class ANN_numpy():
             # (n_this, batch_size) = (n_this, n_next) @ (n_next, batch_size)
             weighted_sum = np.dot(next_layer.weights.T, next_layer.delta)
             layer.delta = weighted_sum * layer.activation_derivatives
-        
+    
+    def _save_parameters_snapshot(self):
+        """Deep-copy current weights and biases of all layers."""
+        weights = [layer.weights.copy() for layer in self.layers]
+        biases  = [layer.biases.copy()  for layer in self.layers]
+        return weights, biases
+
+    def _restore_parameters_snapshot(self, saved):
+        """Restore a previously saved weights/biases snapshot."""
+        weights, biases = saved
+        for layer, w, b in zip(self.layers, weights, biases):
+            layer.weights = w.copy()
+            layer.biases  = b.copy()
+    
     def compute_gradients_sample(self, input_vector, target):
         """
         Computes gradients (dweights and dbiases) for a single training sample using NumPy.
@@ -222,86 +306,142 @@ class ANN_numpy():
             layer.dweights = np.dot(layer.delta, prev_a.T) / batch_size
             layer.dbiases  = layer.delta.mean(axis=1, keepdims=True)
 
-    def train(self, X, Y, epochs=10, learning_rate=0.01, batch_size=1, 
-              verbose=True, lr_decay=0.95, decay_every=20, l2_lambda=0):
-        
-        # X, Y - whole training dataset
-
+    def compute_loss(self, X, Y):
         """
-        Train the ANN using mini-batch gradient descent.
+        Compute the mean loss across a batch of samples.
 
         Parameters:
         -----------
-        X : np.ndarray, shape (n_samples, n_input, 1)
-        Y : np.ndarray, shape (n_samples, n_output, 1)
-        epochs : int
-        learning_rate : float
-        batch_size : int
-        verbose : bool
-        lr_decay : float   - multiplicative decay factor
-        decay_every : int  - decay LR every N epochs
-        l2_lambda : float  - L2 regularization strength (0 = off)
+        X : np.ndarray, shape (n_samples, n_features, 1) or (n_features, n_samples)
+            Batch of input column vectors.
+        Y : np.ndarray, shape (n_samples, n_output, 1) or (n_output, n_samples)
+            Batch of target column vectors.
+
+        Returns:
+        --------
+        float
+            Mean loss across the batch (averaged over samples and output neurons).
         """
-        
-        X = np.array(X)
-        Y = np.array(Y)
-        n_samples = len(X)
+        X = np.asarray(X)
+        Y = np.asarray(Y)
+
+        # Normalize to (n_features, n_samples) and (n_output, n_samples)
+        if X.ndim == 3:
+            X = X[:, :, 0].T
+        if Y.ndim == 3:
+            Y = Y[:, :, 0].T
+
+        Y_pred = self.prediction(X)              # shape (n_output, n_samples)
+        loss_func = self.LOSS_FUNCTIONS[self.loss_function]["func"]
+        return float(np.mean(loss_func(Y, Y_pred)))
+    
+    def train(self, X_train, Y_train, X_val, Y_val,
+              epochs=200,
+              learning_rate=0.01,
+              batch_size=32,
+              lr_decay=0.95,
+              decay_every=20,
+              l2_lambda=1e-4,
+              patience=50,
+              verbose=True):
+        """
+        Train the ANN with mini-batch gradient descent, LR decay, and early stopping.
+
+        Uses the network's own RNG (self.rng, seeded in __init__) for shuffling.
+
+        Parameters:
+        -----------
+        X_train, Y_train : np.ndarray, shape (n_samples, n_features, 1) / (n_samples, n_output, 1)
+        X_val, Y_val     : same layout
+        epochs           : maximum number of epochs
+        learning_rate    : initial learning rate
+        batch_size       : mini-batch size
+        lr_decay         : multiplicative factor applied every `decay_every` epochs
+        decay_every      : LR decay frequency in epochs
+        l2_lambda        : L2 regularization coefficient
+        patience         : stop after this many epochs without val-loss improvement
+        verbose          : print per-epoch progress
+
+        Returns:
+        --------
+        history : dict with 'train_loss' and 'val_loss' lists per epoch
+        """
+        X_train = np.asarray(X_train)
+        Y_train = np.asarray(Y_train)
+        X_val   = np.asarray(X_val)
+        Y_val   = np.asarray(Y_val)
+
+        n_samples = len(X_train)
+
+        # --- Save hyperparameters for later (used by save_model) ---
+        self.epochs = epochs
+        self.learning_rate = learning_rate
+        self.batch_size = batch_size
+        self.lr_decay = lr_decay
+        self.decay_every = decay_every
+        self.l2_lambda = l2_lambda
+        self.n_samples = n_samples
+
+        # --- Early stopping state ---
+        best_val_loss = float('inf')
+        best_weights = None
+        best_epoch = 0
+        epochs_no_improve = 0
+        history = {"train_loss": [], "val_loss": []}
+
         current_lr = learning_rate
 
-        for epoch in range(epochs):
-
+        for epoch in range(1, epochs + 1):
             # LR decay
-            if epoch != 0 and epoch % decay_every == 0:
+            if epoch > 1 and (epoch - 1) % decay_every == 0:
                 current_lr *= lr_decay
                 if verbose:
                     print(f"  [LR decayed to {current_lr:.6f}]")
 
-            # shuffle
-            indices = np.random.permutation(n_samples)
-            X_shuffled = X[indices]
-            Y_shuffled = Y[indices]
+            # Shuffle and run one epoch of mini-batch SGD
+            indices = self.rng.permutation(n_samples)         # uses self.rng
+            X_shuffled = X_train[indices]
+            Y_shuffled = Y_train[indices]
 
-            # reset loss
-            epoch_loss = 0.0
-
-            # mini-batch loop
             for start in range(0, n_samples, batch_size):
-                # get batch
                 end = min(start + batch_size, n_samples)
                 batch_X = X_shuffled[start:end]
                 batch_Y = Y_shuffled[start:end]
-
-                # compute gradients of the batch
                 self.compute_gradients_batch(batch_X, batch_Y)
-
-                # update layer parameters and L2 if set
                 for layer in self.layers:
-                    if l2_lambda > 0: # apply regularization (penalizes large weights)ž
+                    layer.update_parameters(current_lr, l2_lambda)
 
-                        # weight decay
-                        # j_reg = j + reg
-                        # reg = (l2_lambda / 2) * weights**2
-                        # derivative of reg = l2_lambda * weights
-                        layer.dweights += l2_lambda * layer.weights
+            # Track losses for this epoch
+            train_loss = self.compute_loss(X_train, Y_train)
+            val_loss   = self.compute_loss(X_val, Y_val)
+            history["train_loss"].append(train_loss)
+            history["val_loss"].append(val_loss)
 
-                        layer.weights -= current_lr * layer.dweights
-                        layer.biases  -= current_lr * layer.dbiases
-
-            
             if verbose:
-            # epoch loss - vectorized
+                print(f"Epoch {epoch}/{epochs} - "
+                      f"Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f}")
 
-                # all samples -> predictions
-                all_preds = np.array([self.prediction(x) for x in X])
+            # Early stopping
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_epoch = epoch
+                epochs_no_improve = 0
+                best_weights = self._save_parameters_snapshot()
+            else:
+                epochs_no_improve += 1
+                if epochs_no_improve >= patience:
+                    if verbose:
+                        print(f"\n*** Early stopping at epoch {epoch} "
+                              f"(best was epoch {best_epoch}) ***")
+                    break
 
-                # ensure same shape of true labels and predictions
-                Y_flat = Y.reshape(n_samples, -1)
-                P_flat = all_preds.reshape(n_samples, -1)
+        # Restore best weights
+        if verbose:
+            print(f"\nRestoring best weights from epoch {best_epoch} "
+                  f"(val loss: {best_val_loss:.6f})")
+        self._restore_parameters_snapshot(best_weights)
 
-                # calculate loss
-                loss_func = self.LOSS_FUNCTIONS[self.loss_function.lower()]
-                epoch_loss = loss_func["func"](Y_flat, P_flat)
-                print(f"Epoch {epoch}/{epochs} - Loss: {epoch_loss:.6f} - LR: {current_lr:.6f}")
+        return history
 
     def save_model():
         pass
@@ -309,12 +449,4 @@ class ANN_numpy():
     @classmethod
     def load_model(cls, filepath):
         pass
-        
-    def compute_loss(self, X, Y):
-        pass
     
-    def _save_parameters_snapshot(self):
-        """Deep-copy current weights and biases of all layers."""
-
-    def _restore_parameters_snapshot(self, saved):
-        """Restore a previously saved weights/biases snapshot."""

@@ -7,8 +7,8 @@ from datetime import datetime
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 
-SRC_BASE_PYTHON = PROJECT_ROOT / "src" / "base_python_version"
 SRC = PROJECT_ROOT / "src" 
+SRC_BASE_PYTHON = SRC / "base_python_version"
 TRAIN_DATA_FILE = PROJECT_ROOT / "data" / "training_set.howlin"
 TEST_DATA_FILE = PROJECT_ROOT / "data" / "homology_reduced_subset_4.howlin"
 MODEL_FOLDER = PROJECT_ROOT / "models"
@@ -108,7 +108,7 @@ def train_model(ann, X_train, Y_train, X_val, Y_val, rng,
     
     # Auto-generate a timestamped name if none provided
     if model_name is None:
-        model_name = f"model_{datetime.now():%Y%m%d_%H%M%S}.txt"
+        model_name = f"base_python_model_{datetime.now():%Y%m%d_%H%M%S}.txt"
     
     # === TRAIN ===
     history = ann.train(
@@ -145,8 +145,9 @@ def test_model():
 
 if __name__ == "__main__":
     
-    """# Data Handling train and validation sets
+    # Data Handling train and validation sets
     X_train, Y_train, X_val, Y_val, rng = train_data_handling(seed=42, train_ratio = 0.85)
+    
     
     # Create Neural Network
     ann = create_model(n_layers=4,
@@ -154,7 +155,10 @@ if __name__ == "__main__":
                        activation_hidden="relu",
                        activation_output="sigmoid",
                        loss_function="BinaryCrossEntropy")
+                       
+    print(ann.n_layers)
     
+    """
     # Train the model
     train_model(ann, X_train, Y_train, X_val, Y_val, rng,
                 data_name = str(TRAIN_DATA_FILE),
@@ -166,14 +170,14 @@ if __name__ == "__main__":
                 lr_decay=0.95,
                 decay_every=20,
                 l2_lambda=1e-4,
-                patience=50)"""
+                patience=50)
     
     # test_model()
     ann_test = ANN_base_python.load_model(MODEL_FOLDER / "model_20260428_183826.txt")
     
     X_test, Y_test = test_data_handling()
     
-    evaluate(ann_test, X_test, Y_test, name=str(TEST_DATA_FILE))
+    evaluate(ann_test, X_test, Y_test, name=str(TEST_DATA_FILE))"""
     
     
     

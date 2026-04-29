@@ -1,6 +1,3 @@
-##################################
-# Build Aritificial Neural Network
-##################################
 import random
 import math
 
@@ -351,9 +348,7 @@ class ANN_Layer_base_python():
 
         self.activation_derivatives = []
         deriv_func = self.ACTIVATION_FUNCTIONS[self.activation_function]['deriv']
-        for z in self.z_s:
-            # z is a single-element list [[value]], so take z[0]
-            self.activation_derivatives.append([deriv_func(z[0])])
+        self.activation_derivatives = [deriv_func(z[0]) for z in self.z_s]
         return self.activation_derivatives
         
     def update_parameters(self, learning_rate, l2_lambda=0.0):

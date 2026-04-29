@@ -1,8 +1,6 @@
 import numpy as np
 import random
 
-# no seed - each ANN should be initialised with random weights + epochs must differ 
-
 class ANN_Layer_numpy():
     
     ACTIVATION_FUNCTIONS = {

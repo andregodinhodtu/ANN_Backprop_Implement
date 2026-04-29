@@ -7,11 +7,11 @@ from ANN_layer_base_python import ANN_Layer_base_python
 class ANN_base_python():
     
     LOSS_FUNCTIONS = {
-        "MSE": {
+        "mse": {
             "func":  lambda y_true, y_pred: (y_pred - y_true) ** 2,
             "deriv": lambda y_true, y_pred: 2 * (y_pred - y_true),
         },
-        "BinaryCrossEntropy": {
+        "binarycrossentropy": {
             # Per-neuron formula. Both args are scalars.
             "func":  lambda y_true, y_pred: -(
                 y_true * math.log(max(y_pred, 1e-15)) +
@@ -57,12 +57,12 @@ class ANN_base_python():
         if activation_output not in ANN_Layer_base_python.ACTIVATION_FUNCTIONS:
             raise ValueError(
                 f"Unknown output activation: {activation_output!r}. "
-                f"Choose from {list(ACTIVATION_FUNCTIONS)}"
+                f"Choose from {list(ANN_Layer_base_python.ACTIVATION_FUNCTIONS)}"
             )
             
-        if loss_function == "BinaryCrossEntropy" and activation_output != "sigmoid":
+        if loss_function == "binarycrossentropy" and activation_output != "sigmoid":
                raise ValueError(
-                   "BinaryCrossEntropy requires sigmoid output activation. "
+                   "binarycrossentropy requires sigmoid output activation. "
                    f"Got {activation_output!r}."
                )
                
@@ -117,23 +117,44 @@ class ANN_base_python():
             
     def prediction(self, input_vector):
         """
-        Make a forward pass through the entire ANN.
+        Make a forward pass through the entire ANN for a single sample.
 
         Parameters:
         -----------
         input_vector : list of lists
-            Input column vector (shape: n_input x 1).
+            Input column vector, shape (n_input, 1).
+            Must be a list of single-element lists, e.g. [[0.5], [0.2], [0.9]].
 
         Returns:
         --------
         list of lists
-            Output of the last layer after activation.
+            Output of the last layer after activation, shape (n_output, 1).
         """
-        working_vector = input_vector
+        # --- Type checks ---
+        if not isinstance(input_vector, list):
+            raise TypeError("input_vector must be a list of lists")
+        if not all(isinstance(row, list) for row in input_vector):
+            raise TypeError("All elements of input_vector must be lists (rows)")
+        if not all(isinstance(val, (int, float)) for row in input_vector for val in row):
+            raise TypeError("All values in input_vector must be ints or floats")
 
-        # Forward pass through all layers
+        # --- Value checks ---
+        if len(input_vector) == 0:
+            raise ValueError("input_vector cannot be empty")
+        if any(len(row) != 1 for row in input_vector):
+            raise ValueError("Each row in input_vector must contain exactly 1 element")
+
+        # --- Dimension check against network's expected input size ---
+        expected = self.n_neurons_each_layer[0]
+        if len(input_vector) != expected:
+            raise ValueError(
+                f"input_vector has {len(input_vector)} features, "
+                f"but the network expects {expected}."
+            )
+
+        # --- Forward pass through all layers ---
+        working_vector = input_vector
         for layer in self.layers:
-            
             # Use the layer's __call__ to do forward pass and activation
             working_vector = layer(working_vector)
 
@@ -182,7 +203,7 @@ class ANN_base_python():
                     )
 
                 # --- Shared finish ---
-                delta = upstream * layer.activation_derivatives[j][0]   # ← [0] unwraps the column-vector cell
+                delta = upstream * layer.activation_derivatives[j]
                 layer.delta.append(delta)
     
     def _save_parameters_snapshot(self):
@@ -331,10 +352,11 @@ class ANN_base_python():
               decay_every=20,
               l2_lambda=1e-4,
               patience=50,
-              verbose=True,
-              rng=None):
+              verbose=True):
         """
         Train the ANN with mini-batch gradient descent, LR decay, and early stopping.
+              
+        Uses the network's own RNG (self.rng, seeded in __init__) for shuffling.
 
         Parameters:
         -----------
@@ -348,14 +370,11 @@ class ANN_base_python():
         l2_lambda        : L2 regularization coefficient
         patience         : stop after this many epochs without val-loss improvement
         verbose          : print per-epoch progress
-        rng              : random.Random instance for shuffling (None = new generator)
 
         Returns:
         --------
         history : dict with 'train_loss' and 'val_loss' lists per epoch
         """
-        if rng is None:
-            rng = random.Random()
 
         # --- Save hyperparameters for later (used by save_model) ---
         self.epochs = epochs
@@ -384,7 +403,7 @@ class ANN_base_python():
 
             # Shuffle and run one epoch of mini-batch SGD
             indices = list(range(len(X_train)))
-            rng.shuffle(indices)
+            self.rng.shuffle(indices)
             X_shuffled = [X_train[i] for i in indices]
             Y_shuffled = [Y_train[i] for i in indices]
 
@@ -397,6 +416,8 @@ class ANN_base_python():
                     layer.update_parameters(current_lr, l2_lambda)
 
             # Track losses for this epoch
+            
+            # We could maybe accumulate train_loss from the first pass
             train_loss = self.compute_loss(X_train, Y_train)
             val_loss   = self.compute_loss(X_val, Y_val)
             history["train_loss"].append(train_loss)
