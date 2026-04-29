@@ -189,10 +189,7 @@ def create_model(n_layers=4,
     )
     return ann
 
-def train_model(ann, X_train, Y_train, X_val, Y_val, rng,
-                data_name = None,
-                model_name=None,
-                save_path="../models",
+def train_model(ann, X_train, Y_train, X_val, Y_val,
                 epochs=200,
                 learning_rate=0.01,
                 batch_size=32,
@@ -221,14 +218,14 @@ def train_model(ann, X_train, Y_train, X_val, Y_val, rng,
         decay_every=decay_every,
         l2_lambda=l2_lambda,
         patience=patience,
-        rng=rng,
+        verbose=True
     )
     
     # === REPORT RESULTS ===
-    report_results(ann, X_train, Y_train, X_val, Y_val, threshold=0.5)
+    #report_results(ann, X_train, Y_train, X_val, Y_val, threshold=0.5)
     
     # === SAVE MODEL ===
-    ann.save_model(model_name, data_name, save_path)
+    #ann.save_model(model_name, data_name, save_path)
     
     return history
 
@@ -255,24 +252,24 @@ if __name__ == "__main__":
                        n_neurons_each_layer=[27, 32, 16, 1],
                        activation_hidden="relu",
                        activation_output="sigmoid",
-                       loss_function="BinaryCrossEntropy")
+                       loss_function="binarycrossentropy")
     
-    print(ann.n_layers)
     
-    """
     # Train the model
-    train_model(ann, X_train, Y_train, X_val, Y_val, rng,
-                data_name = str(TRAIN_DATA_FILE),
-                model_name=None,
-                save_path="../models",
-                epochs=5,
-                learning_rate=0.01,
-                batch_size=32,
-                lr_decay=0.95,
-                decay_every=20,
-                l2_lambda=1e-4,
-                patience=50)
-    
+    #train_model(ann, X_train, Y_train, X_val, Y_val,
+                #epochs=200,
+                #learning_rate=0.01,
+                #batch_size=32,
+                #lr_decay=0.95,
+                #decay_every=20,
+                #l2_lambda=1e-4,
+                #patience=50,
+                #verbose=True)
+                
+    ann.train(X_train, Y_train, X_val, Y_val)
+                
+                
+    """
     # test_model()
     ann_test = ANN_base_python.load_model(MODEL_FOLDER / "model_20260428_183826.txt")
     
