@@ -9,8 +9,10 @@ class ANN_Layer_base_python():
             "deriv": lambda x: 1 if x > 0 else 0
         },
         "sigmoid": {
-            "func": lambda x: 1 / (1 + math.exp(-x)),
-            "deriv": lambda x: (lambda s: s * (1 - s))(1 / (1 + math.exp(-x)))
+            "func":  lambda x: 1 / (1 + math.exp(-max(min(x, 500), -500))),
+            "deriv": lambda x: (lambda s: s * (1 - s))(
+                1 / (1 + math.exp(-max(min(x, 500), -500)))
+            ),
         },
         "leaky_relu": {
             "func": lambda x: x if x > 0 else 0.01 * x,
@@ -230,7 +232,7 @@ class ANN_Layer_base_python():
         ]
         # Bias vector: shape (n_neurons_output, 1)
         self.biases = [[0.0] for _ in range(self.n_neurons_output)]
-    
+        
     def _matrix_multiply(self, input_vector):
         """
         Multiply the layer's weight matrix by the input vector.

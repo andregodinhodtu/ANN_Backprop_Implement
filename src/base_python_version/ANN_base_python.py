@@ -23,7 +23,7 @@ class ANN_base_python():
     }
         
     def __init__(self, n_layers, n_neurons_each_layer, activation_hidden,
-                 activation_output, loss_function, seed=None):
+                 activation_output, loss_function, rng=None):
         """
         Build a feedforward neural network with n_layers.
         Parameters:
@@ -78,11 +78,11 @@ class ANN_base_python():
         self.activation_hidden = activation_hidden
         self.activation_output = activation_output
         self.loss_function = loss_function
-        self.seed = seed
+        self.rng = rng
         
         # Dedicated RNG so this network's randomness is isolated from
         # the global random state (good practice).
-        self.rng = random.Random(seed)
+        self.rng = random.Random()
         
         # Layers container
         self.layers = []
@@ -161,6 +161,46 @@ class ANN_base_python():
         return working_vector
         
     def _compute_deltas(self, y):
+        expected = self.layers[-1].n_neurons_output
+        if len(y) != expected:
+            raise ValueError(
+                f"y has {len(y)} elements, expected {expected} (output layer size)."
+            )
+
+        # Iterate layers from output back to input
+        for i in reversed(range(len(self.layers))):
+            layer = self.layers[i]
+
+            layer.compute_activation_derivatives()
+            layer.delta = []
+
+            is_output = (i == len(self.layers) - 1)
+
+            # === Special case: BCE + sigmoid output ===
+            # The gradient (a - y)/(a*(1-a)) * a*(1-a) simplifies to (a - y).
+            # Compute this directly to avoid catastrophic cancellation.
+            if is_output and self.loss_function == "binarycrossentropy" \
+                         and layer.activation_function == "sigmoid":
+                for j in range(layer.n_neurons_output):
+                    delta = layer.a_s[j][0] - y[j][0]    # the simplified form
+                    layer.delta.append(delta)
+                continue   # skip the generic path for this layer
+
+            # === Generic path ===
+            loss_deriv = self.LOSS_FUNCTIONS[self.loss_function]["deriv"]
+
+            for j in range(layer.n_neurons_output):
+                if is_output:
+                    upstream = loss_deriv(layer.a_s[j][0], y[j][0])
+                else:
+                    next_layer = self.layers[i + 1]
+                    upstream = sum(
+                        next_layer.delta[k] * next_layer.weights[k][j]
+                        for k in range(next_layer.n_neurons_output)
+                    )
+
+                delta = upstream * layer.activation_derivatives[j]
+                layer.delta.append(delta)
         """
         Compute delta values for each layer (backward pass).
         Stores them in each layer's `.delta` attribute.
@@ -451,17 +491,17 @@ class ANN_base_python():
         
     def save_model(self, output_filename, data_name, path="../models"):
         """Save model parameters in a consistent and replicable way."""
-    
+
         if not isinstance(output_filename, str):
             raise TypeError("output_filename must be a string")
         if not isinstance(data_name, str):
             raise TypeError("data_name must be a string")
-    
+
         save_dir = Path(path)
         save_dir.mkdir(parents=True, exist_ok=True)
         full_path = save_dir / output_filename
-    
-        with open(full_path, "w", encoding='utf-8') as file:
+
+        with open(full_path, "w", encoding="utf-8") as file:
             # --- Metadata ---
             file.write(f">Model: {output_filename}\n")
             file.write(f">Data used to train: {data_name}\n")
@@ -472,7 +512,7 @@ class ANN_base_python():
             file.write(f">Learning rate decay: {self.lr_decay}\n")
             file.write(f">Decay every: {self.decay_every}\n")
             file.write(f">L2 lambda: {self.l2_lambda}\n")
-        
+
             # --- Architecture ---
             arch_str = ",".join(str(n) for n in self.n_neurons_each_layer)
             file.write(f">N layers: {self.n_layers}\n")
@@ -480,42 +520,39 @@ class ANN_base_python():
             file.write(f">Activation hidden: {self.activation_hidden}\n")
             file.write(f">Activation output: {self.activation_output}\n")
             file.write(f">Loss function: {self.loss_function}\n")
-        
+
             # --- Parameters per layer ---
             for i, layer in enumerate(self.layers):
                 n_out = len(layer.weights)
                 n_in  = len(layer.weights[0])
-            
+
                 file.write(f">Layer {i} weights: {n_out}x{n_in}\n")
                 for row in layer.weights:
                     file.write(" ".join(f"{w:.10f}" for w in row) + "\n")
-            
+
                 file.write(f">Layer {i} biases: {n_out}x1\n")
                 for row in layer.biases:
                     file.write(f"{row[0]:.10f}\n")
-    
+
         print(f"Model saved to: {full_path.resolve()}")
-          
+
     @classmethod
     def load_model(cls, filepath):
         """Reconstruct an ANN from a saved model file."""
-        with open(filepath, "r", encoding='utf-8') as file:
+        with open(filepath, "r", encoding="utf-8") as file:
             lines = [line.rstrip("\n") for line in file]
-    
-        # --- First pass: parse all header lines into a dict ---
+
+        # --- First pass: parse header lines into a dict ---
         headers = {}
         data_lines = []
         for line in lines:
             if line.startswith(">"):
                 key, _, value = line[1:].partition(":")
                 headers[key.strip()] = value.strip()
-                data_lines.append(line)  # keep position for layer parsing
-            else:
-                data_lines.append(line)
-    
+            data_lines.append(line)
+
         # --- Build the model from architecture info ---
         architecture = [int(n) for n in headers["Architecture"].split(",")]
-        print(architecture)
         ann = cls(
             n_layers=int(headers["N layers"]),
             n_neurons_each_layer=architecture,
@@ -523,40 +560,37 @@ class ANN_base_python():
             activation_output=headers["Activation output"],
             loss_function=headers["Loss function"],
         )
-    
+
         # --- Second pass: walk through lines and load weights/biases ---
         i = 0
         layer_idx = 0
         while i < len(data_lines):
             line = data_lines[i]
-        
+
             if line.startswith(">Layer") and "weights" in line:
-                # Header tells us the shape: ">Layer 0 weights: 32x27"
+                # ">Layer 0 weights: 32x27"
                 shape_str = line.split(":")[1].strip()
                 n_out, n_in = (int(x) for x in shape_str.split("x"))
-            
+
                 # Read the next n_out lines as weight rows
-                weights = []
+                rows = []
                 for j in range(n_out):
                     row = [float(v) for v in data_lines[i + 1 + j].split()]
-                    weights.append(row)
-                ann.layers[layer_idx].weights = weights
+                    rows.append(row)
+                ann.layers[layer_idx].weights = rows                       # list of lists
                 i += 1 + n_out
-        
+
             elif line.startswith(">Layer") and "biases" in line:
                 shape_str = line.split(":")[1].strip()
                 n_out, _ = (int(x) for x in shape_str.split("x"))
-            
-                biases = []
-                for j in range(n_out):
-                    biases.append([float(data_lines[i + 1 + j])])
-                ann.layers[layer_idx].biases = biases
+
+                biases = [[float(data_lines[i + 1 + j])] for j in range(n_out)]
+                ann.layers[layer_idx].biases = biases                      # list of single-element lists
                 i += 1 + n_out
                 layer_idx += 1
-        
+
             else:
                 i += 1
-    
+
         print(f"Model loaded from: {Path(filepath).resolve()}")
         return ann
-        

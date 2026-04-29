@@ -9,9 +9,8 @@ class ANN_Layer_numpy():
             "deriv": lambda x: (x > 0).astype(float)
         },
         "sigmoid": {
-            "func": lambda x: 1 / (1 + np.e ** (-x)),
-            "deriv": lambda x: (1 / (1 + np.e ** (-x))) *
-                               (1 - (1 / (1 + np.e ** (-x))))
+            "func": lambda x: 1 / (1 + np.exp(-x)),
+            "deriv": lambda x: (lambda s: s * (1 - s))(1 / (1 + np.exp(-x))),
         },
         "leaky_relu": {
             "func": lambda x: np.where(x > 0, x, 0.01 * x),
