@@ -123,7 +123,6 @@ def test_forward_stores_z_s_and_a_s():
     print(layer.z_s)
     assert len(layer.z_s) == 2
     assert len(layer.a_s) == 2
-    assert 2 == 1
 
 
 # ============================================================
