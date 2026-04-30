@@ -1,10 +1,24 @@
 import sys
-
 sys.path.append("src/base_python_version")
 
 import pytest
 import numpy as np
 from ANN_layer_base_python import ANN_Layer_base_python as ANN_Layer
+
+
+# ============================================================
+# Helper: assert both shape and values
+# ============================================================
+
+def assert_equal(actual, expected):
+    """Assert that actual and expected have the same shape and close values."""
+    actual_arr = np.array(actual)
+    expected_arr = np.array(expected)
+    assert actual_arr.shape == expected_arr.shape, (
+        f"Shape mismatch: got {actual_arr.shape}, expected {expected_arr.shape}"
+    )
+    assert np.allclose(actual_arr, expected_arr)
+
 
 # ============================================================
 # biases_vector setter — happy path
@@ -13,13 +27,15 @@ from ANN_layer_base_python import ANN_Layer_base_python as ANN_Layer
 def test_biases_vector_setter_list():
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     layer.biases_vector = [[1], [0]]
-    assert np.allclose(layer.biases, [[1], [0]])
+    assert_equal(layer.biases, [[1], [0]])
+
 
 def test_biases_vector_setter_rejects_numpy():
     """Base Python implementation must reject numpy arrays."""
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     with pytest.raises(TypeError):
         layer.biases_vector = np.array([[1], [0]])
+
 
 # ============================================================
 # biases_vector setter — TypeError
@@ -35,6 +51,7 @@ def test_biases_vector_setter_wrong_type(bad_biases):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     with pytest.raises(TypeError):
         layer.biases_vector = bad_biases
+
 
 # ============================================================
 # biases_vector setter — ValueError

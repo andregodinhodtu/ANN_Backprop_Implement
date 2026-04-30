@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append("src/numpy_version")
+
 import pytest
 import numpy as np
 from ANN_layer_numpy import ANN_Layer_numpy as ANN_Layer
