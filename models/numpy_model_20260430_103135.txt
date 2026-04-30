@@ -1,4 +1,4 @@
->Model: numpy_model_20260430_010637.txt
+>Model: numpy_model_20260430_103135.txt
 >Data used to train: /Users/andregodinho/Documents/GitHub/ANN_Backprop_Implement/data/training_set.howlin
 >Number of samples: 4276
 >Epochs: 200

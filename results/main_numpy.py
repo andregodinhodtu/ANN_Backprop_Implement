@@ -20,7 +20,7 @@ sys.path.append(str(SRC))
 from data_input_numpy import parse_input
 from ANN_layer_numpy import ANN_Layer_numpy
 from ANN_numpy import ANN_numpy
-from evaluate import report_results, evaluate
+from evaluate_numpy import report_results, evaluate
 
 # Sanity check — fails fast with a clear message if the path is wrong
 assert TRAIN_DATA_FILE.exists(), f"Train data file not found at: {TRAIN_DATA_FILE}"
@@ -132,7 +132,7 @@ def train_model(ann, X_train, Y_train, X_val, Y_val,
     )
     
     # === REPORT RESULTS ===
-    #report_results(ann, X_train, Y_train, X_val, Y_val, threshold=0.5)
+    report_results(ann, X_train, Y_train, X_val, Y_val, threshold=0.5)
     
     # === SAVE MODEL ===
     ann.save_model(model_name, data_name, save_path)
@@ -180,9 +180,8 @@ if __name__ == "__main__":
                 patience=50)
                 
                 
-    """
-    # test_model()
-    ann_test = ANN_base_python.load_model(MODEL_FOLDER / "model_20260428_183826.txt")
+    """# test_model()
+    ann_test = ANN_numpy.load_model(MODEL_FOLDER / "numpy_model_20260430_103135.txt")
     
     X_test, Y_test = test_data_handling()
     
