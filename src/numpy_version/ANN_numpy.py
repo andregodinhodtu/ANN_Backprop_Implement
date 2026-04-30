@@ -195,7 +195,8 @@ class ANN_numpy():
         # --- Output layer delta ---
         output_layer = self.layers[-1]
         output_layer.compute_activation_derivatives()
-        a = output_layer.a_s                                  # (n_out, batch_size)
+        # (n_out, batch_size)
+        a = output_layer.a_s
 
         loss_deriv = self.LOSS_FUNCTIONS[self.loss_function]["deriv"]
         output_layer.delta = loss_deriv(y, a) * output_layer.activation_derivatives
