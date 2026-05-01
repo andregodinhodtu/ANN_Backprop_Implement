@@ -22,6 +22,7 @@ class ANN_numpy():
                 (np.clip(y_pred, 1e-12, 1 - 1e-12) * np.clip(1 - y_pred, 1e-12, 1 - 1e-12)),
         },
     }
+    
     def __init__(self, n_layers, n_neurons_each_layer, activation_hidden,
                  activation_output, loss_function, rng = None):
 
