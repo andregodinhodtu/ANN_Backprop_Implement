@@ -1,10 +1,24 @@
 import sys
-
 sys.path.append("src/numpy_version")
 
 import pytest
 import numpy as np
 from ANN_layer_numpy import ANN_Layer_numpy as ANN_Layer
+
+
+# ============================================================
+# Helper: assert both shape and values
+# ============================================================
+
+def assert_matrix_equal(actual, expected):
+    """Assert that actual and expected have the same shape and close values."""
+    actual_arr = np.array(actual)
+    expected_arr = np.array(expected)
+    assert actual_arr.shape == expected_arr.shape, (
+        f"Shape mismatch: got {actual_arr.shape}, expected {expected_arr.shape}"
+    )
+    assert np.allclose(actual_arr, expected_arr)
+
 
 # ============================================================
 # Forward — happy path (relu)
@@ -21,7 +35,8 @@ def test_forward_correct_output_relu(input_vector, expected):
     layer.biases_vector  = [[1], [0]]
 
     result = layer.forward(input_vector)
-    assert np.allclose(result, expected)
+    assert_matrix_equal(result, expected)
+
 
 @pytest.mark.parametrize("input_vector, expected", [
     ([[2], [3]], [[0], [3]]),
@@ -34,7 +49,8 @@ def test_forward_activation_applied_relu(input_vector, expected):
     layer.biases_vector  = [[-5], [0]]
 
     result = layer.forward(input_vector)
-    assert np.allclose(result, expected)
+    assert_matrix_equal(result, expected)
+
 
 # ============================================================
 # Forward — happy path (sigmoid)
@@ -57,7 +73,8 @@ def test_forward_correct_output_sigmoid(input_vector):
                 [1 / (1 + np.exp(-z1))]]
 
     result = layer.forward(input_vector)
-    assert np.allclose(result, expected)
+    assert_matrix_equal(result, expected)
+
 
 @pytest.mark.parametrize("input_vector", [
     [[2], [3]],
@@ -75,6 +92,7 @@ def test_forward_sigmoid_output_range(input_vector):
     assert np.all(result_array > 0)
     assert np.all(result_array < 1)
 
+
 # ============================================================
 # Forward — output shape
 # ============================================================
@@ -87,6 +105,7 @@ def test_forward_output_shape():
     result = layer.forward([[1], [2], [3]])
     result_array = np.array(result)
     assert result_array.shape == (2, 1)
+
 
 # ============================================================
 # Forward — intermediate values stored
@@ -103,6 +122,7 @@ def test_forward_stores_z_s_and_a_s():
     assert layer.a_s is not None
     assert len(layer.z_s) == 2
     assert len(layer.a_s) == 2
+
 
 # ============================================================
 # Forward — TypeError tests
@@ -123,6 +143,7 @@ def test_forward_wrong_type(input_vector):
     with pytest.raises(TypeError):
         layer.forward(input_vector)
 
+
 # ============================================================
 # Forward — ValueError tests
 # ============================================================
@@ -135,6 +156,7 @@ def test_forward_wrong_row_count():
     with pytest.raises(ValueError):
         layer.forward([[1], [2], [3]])  # 3 rows, expects 2
 
+
 def test_forward_empty_input():
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     layer.weights_matrix = [[1, 0], [0, 1]]
@@ -142,6 +164,7 @@ def test_forward_empty_input():
 
     with pytest.raises(ValueError):
         layer.forward([])
+
 
 # ============================================================
 # Forward — NumPy vectorization tests
@@ -159,8 +182,8 @@ def test_forward_accepts_batch():
     out = layer.forward(input_batch)
 
     expected = np.array([[1, 3], [2, 4]])
-    assert out.shape == (2, 2)
-    np.testing.assert_array_equal(out, expected)
+    assert_matrix_equal(out, expected)
+
 
 def test_forward_batch_matches_individual_calls():
     """Batched forward must produce the same result as sample-by-sample calls."""
@@ -179,4 +202,4 @@ def test_forward_batch_matches_individual_calls():
     batched_output = layer.forward(batch)
     individual_outputs = np.hstack([layer.forward(s) for s in samples])
 
-    np.testing.assert_allclose(batched_output, individual_outputs, atol=1e-10)
+    assert_matrix_equal(batched_output, individual_outputs)

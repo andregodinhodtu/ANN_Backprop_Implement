@@ -1,10 +1,24 @@
 import sys
-
 sys.path.append("src/numpy_version")
 
 import pytest
 import numpy as np
 from ANN_layer_numpy import ANN_Layer_numpy as ANN_Layer
+
+
+# ============================================================
+# Helper: assert both shape and values
+# ============================================================
+
+def assert_equal(actual, expected):
+    """Assert that actual and expected have the same shape and close values."""
+    actual_arr = np.array(actual)
+    expected_arr = np.array(expected)
+    assert actual_arr.shape == expected_arr.shape, (
+        f"Shape mismatch: got {actual_arr.shape}, expected {expected_arr.shape}"
+    )
+    assert np.allclose(actual_arr, expected_arr)
+
 
 # ============================================================
 # Helper to set up a layer with gradients ready
@@ -21,6 +35,7 @@ def make_layer_with_gradients():
     layer.dbiases  = np.array([[0.1], [0.2]])
     return layer
 
+
 # ============================================================
 # update_parameters — happy path
 # ============================================================
@@ -30,28 +45,32 @@ def test_update_weights_correct():
     old_weights = np.array(layer.weights).copy()
     layer.update_parameters(learning_rate=0.1)
     expected = old_weights - 0.1 * np.array([[0.1, 0.2], [0.3, 0.4]])
-    assert np.allclose(layer.weights, expected)
+    assert_equal(layer.weights, expected)
+
 
 def test_update_biases_correct():
     layer = make_layer_with_gradients()
     old_biases = np.array(layer.biases).copy()
     layer.update_parameters(learning_rate=0.1)
     expected = old_biases - 0.1 * np.array([[0.1], [0.2]])
-    assert np.allclose(layer.biases, expected)
+    assert_equal(layer.biases, expected)
+
 
 def test_update_weights_with_l2():
     layer = make_layer_with_gradients()
     old_weights = np.array(layer.weights).copy()
     layer.update_parameters(learning_rate=0.1, l2_lambda=0.01)
     expected = old_weights - 0.1 * (np.array([[0.1, 0.2], [0.3, 0.4]]) + 0.01 * old_weights)
-    assert np.allclose(layer.weights, expected)
+    assert_equal(layer.weights, expected)
+
 
 def test_l2_does_not_affect_biases():
     layer = make_layer_with_gradients()
     old_biases = np.array(layer.biases).copy()
     layer.update_parameters(learning_rate=0.1, l2_lambda=0.99)
     expected = old_biases - 0.1 * np.array([[0.1], [0.2]])
-    assert np.allclose(layer.biases, expected)
+    assert_equal(layer.biases, expected)
+
 
 # ============================================================
 # update_parameters — intermediate variables cleared
@@ -67,6 +86,7 @@ def test_intermediates_cleared_after_update():
     assert layer.z_s is None
     assert layer.a_s is None
 
+
 # ============================================================
 # update_parameters — TypeError tests
 # ============================================================
@@ -79,6 +99,7 @@ def test_update_wrong_type(learning_rate, l2_lambda):
     layer = make_layer_with_gradients()
     with pytest.raises(TypeError):
         layer.update_parameters(learning_rate=learning_rate, l2_lambda=l2_lambda)
+
 
 # ============================================================
 # update_parameters — ValueError tests
@@ -93,6 +114,7 @@ def test_update_wrong_values(learning_rate, l2_lambda):
     layer = make_layer_with_gradients()
     with pytest.raises(ValueError):
         layer.update_parameters(learning_rate=learning_rate, l2_lambda=l2_lambda)
+
 
 # ============================================================
 # update_parameters — state tests
