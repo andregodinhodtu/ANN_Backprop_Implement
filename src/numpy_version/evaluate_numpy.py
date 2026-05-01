@@ -28,13 +28,11 @@ def _to_batch(X, Y):
 
     return X, Y
 
-
 def accuracy(ann, X, Y, threshold=0.5):
     Xb, Yb = _to_batch(X, Y)
     preds = ann.prediction(Xb)            # (1, N)
     pred_labels = (preds >= threshold).astype(int)
     return float(np.mean(pred_labels == Yb.astype(int)))
-
 
 def confusion_matrix(ann, X, Y, threshold=0.5):
     Xb, Yb = _to_batch(X, Y)
@@ -46,7 +44,6 @@ def confusion_matrix(ann, X, Y, threshold=0.5):
     fn = int(np.sum((labels == 1) & (preds == 0)))
     tp = int(np.sum((labels == 1) & (preds == 1)))
     return {"tn": tn, "fp": fp, "fn": fn, "tp": tp}
-
 
 def classification_metrics(ann, X, Y, threshold=0.5):
     cm = confusion_matrix(ann, X, Y, threshold)
@@ -70,7 +67,6 @@ def classification_metrics(ann, X, Y, threshold=0.5):
         "f1":          f1,
     }
 
-
 def print_confusion_matrix(ann, X, Y, threshold=0.5):
     cm = confusion_matrix(ann, X, Y, threshold)
     tn, fp, fn, tp = cm["tn"], cm["fp"], cm["fn"], cm["tp"]
@@ -80,14 +76,12 @@ def print_confusion_matrix(ann, X, Y, threshold=0.5):
     print(f"   Actual 0   {tn:>8}  {fp:>8}")
     print(f"   Actual 1   {fn:>8}  {tp:>8}")
 
-
 def report_results(ann, X_train, Y_train, X_val, Y_val, threshold=0.5):
     train_acc = accuracy(ann, X_train, Y_train, threshold=threshold)
     val_acc   = accuracy(ann, X_val,   Y_val,   threshold=threshold)
 
     print(f"\nTraining accuracy:   {train_acc:.2%}")
     print(f"Validation accuracy: {val_acc:.2%}")
-
 
 def evaluate(ann, X, Y, threshold=0.5, name="Dataset"):
     Xb, Yb = _to_batch(X, Y)

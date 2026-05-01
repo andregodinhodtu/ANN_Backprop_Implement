@@ -178,14 +178,14 @@ if __name__ == "__main__":
                 decay_every=20,
                 l2_lambda=1e-4,
                 patience=50)
+                """
                 
-                
-    """# test_model()
-    ann_test = ANN_numpy.load_model(MODEL_FOLDER / "numpy_model_20260430_103135.txt")
+    # test_model()
+    ann_test = ANN_numpy.load_model(MODEL_FOLDER / "numpy_model_20260430_103557.txt")
     
     X_test, Y_test = test_data_handling()
     
-    evaluate(ann_test, X_test, Y_test, name=str(TEST_DATA_FILE))"""
+    evaluate(ann_test, X_test, Y_test, name=str(TEST_DATA_FILE))
     
     
     
