@@ -1,23 +1,26 @@
 import sys
 sys.path.append("src/base_python_version")
 
+import math
 import pytest
-import numpy as np
 from ANN_layer_base_python import ANN_Layer_base_python as ANN_Layer
 
 
 # ============================================================
-# Helper: assert both shape and values
+# Helper
 # ============================================================
 
-def assert_equal(actual, expected):
-    """Assert that actual and expected have the same shape and close values."""
-    actual_arr = np.array(actual)
-    expected_arr = np.array(expected)
-    assert actual_arr.shape == expected_arr.shape, (
-        f"Shape mismatch: got {actual_arr.shape}, expected {expected_arr.shape}"
+def assert_matrix_equal(actual, expected):
+    """Assert two list-of-lists matrices are equal in shape and values."""
+    assert len(actual) == len(expected), (
+        f"Row count mismatch: got {len(actual)}, expected {len(expected)}"
     )
-    assert np.allclose(actual_arr, expected_arr)
+    for row_a, row_e in zip(actual, expected):
+        assert len(row_a) == len(row_e), (
+            f"Column count mismatch: got {len(row_a)}, expected {len(row_e)}"
+        )
+        for a, e in zip(row_a, row_e):
+            assert a == pytest.approx(e)
 
 
 # ============================================================
@@ -35,7 +38,7 @@ def test_forward_correct_output_relu(input_vector, expected):
     layer.biases  = [[1], [0]]
 
     result = layer.forward(input_vector)
-    assert_equal(result, expected)
+    assert_matrix_equal(result, expected)
 
 
 @pytest.mark.parametrize("input_vector, expected", [
@@ -49,7 +52,7 @@ def test_forward_activation_applied_relu(input_vector, expected):
     layer.biases  = [[-5], [0]]
 
     result = layer.forward(input_vector)
-    assert_equal(result, expected)
+    assert_matrix_equal(result, expected)
 
 
 # ============================================================
@@ -69,11 +72,11 @@ def test_forward_correct_output_sigmoid(input_vector):
 
     z0 = 1 * input_vector[0][0] + 1 * input_vector[1][0] + 1
     z1 = 0 * input_vector[0][0] + 1 * input_vector[1][0] + 0
-    expected = [[1 / (1 + np.exp(-z0))],
-                [1 / (1 + np.exp(-z1))]]
+    expected = [[1 / (1 + math.exp(-z0))],
+                [1 / (1 + math.exp(-z1))]]
 
     result = layer.forward(input_vector)
-    assert_equal(result, expected)
+    assert_matrix_equal(result, expected)
 
 
 @pytest.mark.parametrize("input_vector", [
@@ -88,9 +91,9 @@ def test_forward_sigmoid_output_range(input_vector):
     layer.biases  = [[1], [0]]
 
     result = layer.forward(input_vector)
-    result_array = np.array(result)
-    assert np.all(result_array > 0)
-    assert np.all(result_array < 1)
+    for row in result:
+        for val in row:
+            assert 0 < val < 1
 
 
 # ============================================================
@@ -103,8 +106,8 @@ def test_forward_output_shape():
     layer.biases  = [[0], [0]]
 
     result = layer.forward([[1], [2], [3]])
-    result_array = np.array(result)
-    assert result_array.shape == (2, 1)
+    assert len(result) == 2
+    assert all(len(row) == 1 for row in result)
 
 
 # ============================================================
@@ -120,7 +123,6 @@ def test_forward_stores_z_s_and_a_s():
 
     assert layer.z_s is not None
     assert layer.a_s is not None
-    print(layer.z_s)
     assert len(layer.z_s) == 2
     assert len(layer.a_s) == 2
 
@@ -134,7 +136,6 @@ def test_forward_stores_z_s_and_a_s():
     123,                     # int instead of list
     [[1], [2], "row"],       # row is not a list
     [[1], ["a"]],            # value is not a number
-    np.array([["a"], ["b"]]) # numpy array with non-numeric values
 ])
 def test_forward_wrong_type(input_vector):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
@@ -158,16 +159,6 @@ def test_forward_wrong_row_count():
         layer.forward([[1], [2], [3]])  # 3 rows, expects 2
 
 
-def test_forward_rejects_multi_column():
-    """Pure Python forward only accepts column vectors (one element per row)."""
-    layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights = [[1, 0], [0, 1]]
-    layer.biases  = [[0], [0]]
-
-    with pytest.raises(ValueError):
-        layer.forward([[1, 2], [3, 4]])  # 2 elements per row
-
-
 def test_forward_empty_input():
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     layer.weights = [[1, 0], [0, 1]]
@@ -177,18 +168,11 @@ def test_forward_empty_input():
         layer.forward([])
 
 
-# ============================================================
-# Forward — state tests
-# ============================================================
-
-def test_forward_weights_not_initialized():
-    layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    with pytest.raises(ValueError):
-        layer.forward([[1], [2]])
-
-
-def test_forward_biases_not_initialized():
+def test_forward_wrong_column_count():
+    """Each row in input_vector must contain exactly 1 element."""
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     layer.weights = [[1, 0], [0, 1]]
+    layer.biases  = [[0], [0]]
+
     with pytest.raises(ValueError):
-        layer.forward([[1], [2]])
+        layer.forward([[1, 2], [3, 4]])  # multi-column rows

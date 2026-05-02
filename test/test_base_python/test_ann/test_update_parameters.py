@@ -1,23 +1,22 @@
 import sys
 sys.path.append("src/base_python_version")
 
+import copy
 import pytest
-import numpy as np
 from ANN_layer_base_python import ANN_Layer_base_python as ANN_Layer
 
 
 # ============================================================
-# Helper: assert both shape and values
+# Helper
 # ============================================================
 
 def assert_matrix_equal(actual, expected):
-    """Assert that actual and expected have the same shape and close values."""
-    actual_arr = np.array(actual)
-    expected_arr = np.array(expected)
-    assert actual_arr.shape == expected_arr.shape, (
-        f"Shape mismatch: got {actual_arr.shape}, expected {expected_arr.shape}"
-    )
-    assert np.allclose(actual_arr, expected_arr)
+    """Assert two list-of-lists matrices are equal in shape and values."""
+    assert len(actual) == len(expected)
+    for row_a, row_e in zip(actual, expected):
+        assert len(row_a) == len(row_e)
+        for a, e in zip(row_a, row_e):
+            assert a == pytest.approx(e)
 
 
 # ============================================================
@@ -30,7 +29,7 @@ def make_layer_with_gradients():
     layer.biases  = [[0.0], [0.0]]
     layer.forward([[1], [2]])
     layer.compute_activation_derivatives()
-    # Manually set gradients (base Python expects list-of-lists)
+    # Manually set gradients (list-of-lists for the base-Python version)
     layer.dweights = [[0.1, 0.2], [0.3, 0.4]]
     layer.dbiases  = [[0.1], [0.2]]
     return layer
@@ -42,33 +41,48 @@ def make_layer_with_gradients():
 
 def test_update_weights_correct():
     layer = make_layer_with_gradients()
-    old_weights = np.array(layer.weights).copy()
+    old_weights = copy.deepcopy(layer.weights)
     layer.update_parameters(learning_rate=0.1)
-    expected = old_weights - 0.1 * np.array([[0.1, 0.2], [0.3, 0.4]])
+    expected = [
+        [old_weights[i][j] - 0.1 * [[0.1, 0.2], [0.3, 0.4]][i][j] for j in range(2)]
+        for i in range(2)
+    ]
     assert_matrix_equal(layer.weights, expected)
 
 
 def test_update_biases_correct():
     layer = make_layer_with_gradients()
-    old_biases = np.array(layer.biases).copy()
+    old_biases = copy.deepcopy(layer.biases)
     layer.update_parameters(learning_rate=0.1)
-    expected = old_biases - 0.1 * np.array([[0.1], [0.2]])
+    expected = [
+        [old_biases[i][0] - 0.1 * [[0.1], [0.2]][i][0]]
+        for i in range(2)
+    ]
     assert_matrix_equal(layer.biases, expected)
 
 
 def test_update_weights_with_l2():
     layer = make_layer_with_gradients()
-    old_weights = np.array(layer.weights).copy()
+    old_weights = copy.deepcopy(layer.weights)
+    dweights = [[0.1, 0.2], [0.3, 0.4]]
     layer.update_parameters(learning_rate=0.1, l2_lambda=0.01)
-    expected = old_weights - 0.1 * (np.array([[0.1, 0.2], [0.3, 0.4]]) + 0.01 * old_weights)
+    expected = [
+        [old_weights[i][j] - 0.1 * (dweights[i][j] + 0.01 * old_weights[i][j])
+         for j in range(2)]
+        for i in range(2)
+    ]
     assert_matrix_equal(layer.weights, expected)
 
 
 def test_l2_does_not_affect_biases():
     layer = make_layer_with_gradients()
-    old_biases = np.array(layer.biases).copy()
+    old_biases = copy.deepcopy(layer.biases)
+    dbiases = [[0.1], [0.2]]
     layer.update_parameters(learning_rate=0.1, l2_lambda=0.99)
-    expected = old_biases - 0.1 * np.array([[0.1], [0.2]])
+    expected = [
+        [old_biases[i][0] - 0.1 * dbiases[i][0]]
+        for i in range(2)
+    ]
     assert_matrix_equal(layer.biases, expected)
 
 

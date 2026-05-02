@@ -21,24 +21,24 @@ def assert_equal(actual, expected):
 
 
 # ============================================================
-# biases_vector setter — happy path
+# biases setter — happy path
 # ============================================================
 
-def test_biases_vector_setter_list():
+def test_biases_setter_list():
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.biases_vector = [[1], [0]]
+    layer.biases = [[1], [0]]
     assert_equal(layer.biases, [[1], [0]])
 
 
-def test_biases_vector_setter_rejects_numpy():
+def test_biases_setter_rejects_numpy():
     """Base Python implementation must reject numpy arrays."""
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     with pytest.raises(TypeError):
-        layer.biases_vector = np.array([[1], [0]])
+        layer.biases = np.array([[1], [0]])
 
 
 # ============================================================
-# biases_vector setter — TypeError
+# biases setter — TypeError
 # ============================================================
 
 @pytest.mark.parametrize("bad_biases", [
@@ -47,14 +47,14 @@ def test_biases_vector_setter_rejects_numpy():
     [1, 2],                 # flat list, not list of lists
     [[1], ["a"]],           # non-numeric values
 ])
-def test_biases_vector_setter_wrong_type(bad_biases):
+def test_biases_setter_wrong_type(bad_biases):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     with pytest.raises(TypeError):
-        layer.biases_vector = bad_biases
+        layer.biases = bad_biases
 
 
 # ============================================================
-# biases_vector setter — ValueError
+# biases setter — ValueError
 # ============================================================
 
 @pytest.mark.parametrize("bad_biases", [
@@ -62,7 +62,7 @@ def test_biases_vector_setter_wrong_type(bad_biases):
     [[1, 0], [0, 1]],       # more than 1 column
     [[1]],                  # too few rows
 ])
-def test_biases_vector_setter_wrong_shape(bad_biases):
+def test_biases_setter_wrong_shape(bad_biases):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     with pytest.raises(ValueError):
-        layer.biases_vector = bad_biases
+        layer.biases = bad_biases

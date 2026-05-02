@@ -31,8 +31,8 @@ def assert_matrix_equal(actual, expected):
 ])
 def test_forward_correct_output_relu(input_vector, expected):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1, 1], [0, 1]]
-    layer.biases_vector  = [[1], [0]]
+    layer.weights = [[1, 1], [0, 1]]
+    layer.biases  = [[1], [0]]
 
     result = layer.forward(input_vector)
     assert_matrix_equal(result, expected)
@@ -45,8 +45,8 @@ def test_forward_correct_output_relu(input_vector, expected):
 ])
 def test_forward_activation_applied_relu(input_vector, expected):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1, 0], [0, 1]]
-    layer.biases_vector  = [[-5], [0]]
+    layer.weights = [[1, 0], [0, 1]]
+    layer.biases  = [[-5], [0]]
 
     result = layer.forward(input_vector)
     assert_matrix_equal(result, expected)
@@ -64,8 +64,8 @@ def test_forward_activation_applied_relu(input_vector, expected):
 ])
 def test_forward_correct_output_sigmoid(input_vector):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="sigmoid")
-    layer.weights_matrix = [[1, 1], [0, 1]]
-    layer.biases_vector  = [[1], [0]]
+    layer.weights = [[1, 1], [0, 1]]
+    layer.biases  = [[1], [0]]
 
     z0 = 1 * input_vector[0][0] + 1 * input_vector[1][0] + 1
     z1 = 0 * input_vector[0][0] + 1 * input_vector[1][0] + 0
@@ -84,8 +84,8 @@ def test_forward_correct_output_sigmoid(input_vector):
 ])
 def test_forward_sigmoid_output_range(input_vector):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="sigmoid")
-    layer.weights_matrix = [[1, 1], [0, 1]]
-    layer.biases_vector  = [[1], [0]]
+    layer.weights = [[1, 1], [0, 1]]
+    layer.biases  = [[1], [0]]
 
     result = layer.forward(input_vector)
     result_array = np.array(result)
@@ -99,8 +99,8 @@ def test_forward_sigmoid_output_range(input_vector):
 
 def test_forward_output_shape():
     layer = ANN_Layer(n=0, n_neurons_input=3, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1, 0, 1], [0, 1, 1]]
-    layer.biases_vector  = [[0], [0]]
+    layer.weights = [[1, 0, 1], [0, 1, 1]]
+    layer.biases  = [[0], [0]]
 
     result = layer.forward([[1], [2], [3]])
     result_array = np.array(result)
@@ -113,8 +113,8 @@ def test_forward_output_shape():
 
 def test_forward_stores_z_s_and_a_s():
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1, 0], [0, 1]]
-    layer.biases_vector  = [[0], [0]]
+    layer.weights = [[1, 0], [0, 1]]
+    layer.biases  = [[0], [0]]
 
     layer.forward([[3], [5]])
 
@@ -137,8 +137,8 @@ def test_forward_stores_z_s_and_a_s():
 ])
 def test_forward_wrong_type(input_vector):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1, 0], [0, 1]]
-    layer.biases_vector  = [[0], [0]]
+    layer.weights = [[1, 0], [0, 1]]
+    layer.biases  = [[0], [0]]
 
     with pytest.raises(TypeError):
         layer.forward(input_vector)
@@ -150,8 +150,8 @@ def test_forward_wrong_type(input_vector):
 
 def test_forward_wrong_row_count():
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1, 0], [0, 1]]
-    layer.biases_vector  = [[0], [0]]
+    layer.weights = [[1, 0], [0, 1]]
+    layer.biases  = [[0], [0]]
 
     with pytest.raises(ValueError):
         layer.forward([[1], [2], [3]])  # 3 rows, expects 2
@@ -159,8 +159,8 @@ def test_forward_wrong_row_count():
 
 def test_forward_empty_input():
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1, 0], [0, 1]]
-    layer.biases_vector  = [[0], [0]]
+    layer.weights = [[1, 0], [0, 1]]
+    layer.biases  = [[0], [0]]
 
     with pytest.raises(ValueError):
         layer.forward([])
@@ -173,8 +173,8 @@ def test_forward_empty_input():
 def test_forward_accepts_batch():
     """NumPy treats multi-column input as a batch of samples."""
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1, 0], [0, 1]]
-    layer.biases_vector  = [[0], [0]]
+    layer.weights = [[1, 0], [0, 1]]
+    layer.biases  = [[0], [0]]
 
     # Batch of 2 samples (each column is one sample)
     input_batch = np.array([[1, 3],
@@ -188,8 +188,8 @@ def test_forward_accepts_batch():
 def test_forward_batch_matches_individual_calls():
     """Batched forward must produce the same result as sample-by-sample calls."""
     layer = ANN_Layer(n=0, n_neurons_input=3, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[0.5, -1.0, 0.2], [1.0, 0.3, -0.4]]
-    layer.biases_vector  = [[0.1], [-0.2]]
+    layer.weights = [[0.5, -1.0, 0.2], [1.0, 0.3, -0.4]]
+    layer.biases  = [[0.1], [-0.2]]
 
     samples = [
         np.array([[1.0], [2.0], [3.0]]),

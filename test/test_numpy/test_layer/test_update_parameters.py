@@ -26,8 +26,8 @@ def assert_equal(actual, expected):
 
 def make_layer_with_gradients():
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1.0, 0.0], [0.0, 1.0]]
-    layer.biases_vector  = [[0.0], [0.0]]
+    layer.weights = [[1.0, 0.0], [0.0, 1.0]]
+    layer.biases  = [[0.0], [0.0]]
     layer.forward([[1], [2]])
     layer.compute_activation_derivatives()
     # Manually set gradients
@@ -122,7 +122,7 @@ def test_update_wrong_values(learning_rate, l2_lambda):
 
 def test_update_without_gradients():
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1.0, 0.0], [0.0, 1.0]]
-    layer.biases_vector  = [[0.0], [0.0]]
+    layer.weights = [[1.0, 0.0], [0.0, 1.0]]
+    layer.biases  = [[0.0], [0.0]]
     with pytest.raises(ValueError):
         layer.update_parameters(learning_rate=0.1)

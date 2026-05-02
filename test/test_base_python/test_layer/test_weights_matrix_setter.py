@@ -21,24 +21,24 @@ def assert_matrix_equal(actual, expected):
 
 
 # ============================================================
-# weights_matrix setter — happy path
+# weights setter — happy path
 # ============================================================
 
-def test_weights_matrix_setter_list():
+def test_weights_setter_list():
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
-    layer.weights_matrix = [[1, 0], [0, 1]]
+    layer.weights = [[1, 0], [0, 1]]
     assert_matrix_equal(layer.weights, [[1, 0], [0, 1]])
 
 
-def test_weights_matrix_setter_rejects_numpy():
+def test_weights_setter_rejects_numpy():
     """Base Python implementation must reject numpy arrays."""
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     with pytest.raises(TypeError):
-        layer.weights_matrix = np.array([[1, 0], [0, 1]])
+        layer.weights = np.array([[1, 0], [0, 1]])
 
 
 # ============================================================
-# weights_matrix setter — TypeError
+# weights setter — TypeError
 # ============================================================
 
 @pytest.mark.parametrize("bad_weights", [
@@ -46,14 +46,14 @@ def test_weights_matrix_setter_rejects_numpy():
     123,                    # int
     [1, 2, 3],              # flat list, not list of lists
 ])
-def test_weights_matrix_setter_wrong_type(bad_weights):
+def test_weights_setter_wrong_type(bad_weights):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     with pytest.raises(TypeError):
-        layer.weights_matrix = bad_weights
+        layer.weights = bad_weights
 
 
 # ============================================================
-# weights_matrix setter — ValueError
+# weights setter — ValueError
 # ============================================================
 
 @pytest.mark.parametrize("bad_weights", [
@@ -61,7 +61,7 @@ def test_weights_matrix_setter_wrong_type(bad_weights):
     [[1, 0, 1], [0, 1, 0]],     # too many columns
     [[1], [0]],                  # too few columns
 ])
-def test_weights_matrix_setter_wrong_shape(bad_weights):
+def test_weights_setter_wrong_shape(bad_weights):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     with pytest.raises(ValueError):
-        layer.weights_matrix = bad_weights
+        layer.weights = bad_weights
