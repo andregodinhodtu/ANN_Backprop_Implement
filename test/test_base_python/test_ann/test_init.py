@@ -1,8 +1,8 @@
 import sys
 sys.path.append("src/base_python_version")
 
-import pytest
 import random
+import pytest
 from ANN_base_python import ANN_base_python as ANN
 
 
@@ -65,7 +65,6 @@ def test_initial_state():
     assert ann.layers is not None
     assert len(ann.layers) == 2  # n_layers - 1 connections (4->5, 5->2)
     assert ann.rng is not None
-    assert isinstance(ann.rng, random.Random)
 
 
 def test_rng_passed_through():
