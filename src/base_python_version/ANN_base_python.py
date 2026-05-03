@@ -224,7 +224,7 @@ class ANN_base_python():
         for layer, (w, b) in zip(self.layers, saved):
             layer.weights = [row[:] for row in w]
             layer.biases  = [row[:] for row in b]
-            
+       
     def compute_gradients_sample(self, input_vector, target):
         """
         Compute gradients (dweights, dbiases) for a single training sample.
