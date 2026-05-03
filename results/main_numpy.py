@@ -4,10 +4,10 @@ import random
 import math
 from pathlib import Path
 from datetime import datetime
+import time
 
-################################################################
-##################### PATH AND INPUT DATA ######################
-################################################################
+# PATH AND INPUT DATA -------------------------------------------------
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
@@ -30,9 +30,9 @@ from evaluate_numpy import report_results, evaluate
 assert TRAIN_DATA_FILE.exists(), f"Train data file not found at: {TRAIN_DATA_FILE}"
 assert TEST_DATA_FILE.exists(), f"Test data not found at: {TEST_DATA_FILE}"
 
-################################################################
-################## ANN TRAINING AND TESTING ####################
-################################################################
+
+# ANN TRAINING AND TESTING --------------------------------------------------
+
 
 if __name__ == "__main__":
 
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # Hyperparameters & paths — edit these directly
     # =====================================================================
 
-    # ---- Train settings ----
+    # Train settings 
     SEED          = 42
     TRAIN_RATIO   = 0.85
     EPOCHS        = 200
@@ -50,35 +50,35 @@ if __name__ == "__main__":
     DECAY_EVERY   = 20
     L2_LAMBDA     = 1e-4
     PATIENCE      = 50
-    MODEL_NAME    = None              # None -> auto-generate timestamped name
+    MODEL_NAME    = None              # None = auto-generate timestamped name
     SAVE_PATH     = "../models"
 
-    # ---- Architecture ----
+    # Architecture
     N_LAYERS             = 4
     N_NEURONS_EACH_LAYER = [27, 32, 16, 1]
     ACTIVATION_HIDDEN    = "relu"
     ACTIVATION_OUTPUT    = "sigmoid"
     LOSS_FUNCTION        = "binarycrossentropy"
 
-    # ---- Test settings ----
+    # Test settings
     MODEL_FILE = MODEL_FOLDER / "numpy_model_20260430_103557.txt"
 
-    # =====================================================================
+  
     # Mode selection (only thing parsed from the command line)
-    # =====================================================================
+   
     if len(sys.argv) != 2 or sys.argv[1] not in ("train", "test"):
         print("Usage: python script.py [train|test]")
         sys.exit(1)
 
     mode = sys.argv[1]
 
-    # =====================================================================
+  
     # TRAIN MODE
-    # =====================================================================
+
     if mode == "train":
         rng = np.random.default_rng(SEED)
 
-        # --- Data parsing ---
+        #  Data parsing
         X_all, Y_all = parse_input(str(TRAIN_DATA_FILE))
         # X_all shape: (n_samples, n_features)
         # Y_all shape: (n_samples,) or (n_samples, 1)
@@ -87,7 +87,7 @@ if __name__ == "__main__":
         zeros = len(Y_all) - ones
         print(f"Class 1: {ones}, Class 0: {zeros}, Ratio: {ones / len(Y_all):.2%}")
 
-        # --- Validation split ---
+        # Validation split
         indices = np.arange(len(X_all))
         rng.shuffle(indices)
         split = int(TRAIN_RATIO * len(X_all))
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         print(f"Train samples: {len(X_train)} ({TRAIN_RATIO:.0%}), "
               f"Val samples: {len(X_val)} ({1 - TRAIN_RATIO:.0%})")
 
-        # --- Oversample minority class (0) in training set ---
+        # Oversample minority class (0) in training set
         # Flatten Y_train for boolean masking regardless of shape (n,) or (n, 1)
         Y_flat    = Y_train.ravel()
         ones_idx  = np.where(Y_flat == 1)[0]
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         zeros_after = int(np.sum(Y_train == 0))
         print(f"After oversampling — Class 1: {ones_after}, Class 0: {zeros_after}")
 
-        # --- Build the model ---
+        # Build the model
         ann = ANN_numpy(
             n_layers=N_LAYERS,
             n_neurons_each_layer=N_NEURONS_EACH_LAYER,
@@ -129,11 +129,16 @@ if __name__ == "__main__":
             rng=rng,
         )
 
-        # --- Train ---
+        # Train
         model_name = MODEL_NAME
         if model_name is None:
             model_name = f"numpy_model_{datetime.now():%Y%m%d_%H%M%S}.txt"
 
+        print("Training started.")
+        # measure time
+        start_time = time.time()
+
+        
         history = ann.train(
             X_train, Y_train, X_val, Y_val,
             epochs=EPOCHS,
@@ -146,18 +151,26 @@ if __name__ == "__main__":
             verbose=True,
         )
 
-        # --- Report and save ---
+        # Report and save
         report_results(ann, X_train, Y_train, X_val, Y_val, threshold=0.5)
         ann.save_model(model_name, str(TRAIN_DATA_FILE), SAVE_PATH)
 
-    # =====================================================================
+        end_time = time.time()
+        print(f"Training runtime: {end_time - start_time:.4f} seconds")
+
     # TEST MODE
-    # =====================================================================
+ 
     elif mode == "test":
         ann = ANN_numpy.load_model(str(MODEL_FILE))
 
         X_test, Y_test = parse_input(str(TEST_DATA_FILE))
 
+        print("Evaluation started.")
+        start_time = time.time()
+
         evaluate(ann, X_test, Y_test, name=str(TEST_DATA_FILE))
+
+        end_time = time.time()
+        print(f"Evaluation runtime: {end_time - start_time:.4f} seconds")
     
 
