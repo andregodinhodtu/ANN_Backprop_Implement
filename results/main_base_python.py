@@ -61,7 +61,7 @@ if __name__ == "__main__":
     LOSS_FUNCTION        = "binarycrossentropy"
 
     # Test settings
-    MODEL_FILE = "../models/base_python_model_20260430_000940.txt"
+    MODEL_FILE = "../models/numpy_model_20260503_191411.txt"
    
    # Mode selection (only thing parsed from the command line)
     
