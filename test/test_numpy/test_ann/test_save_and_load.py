@@ -24,7 +24,8 @@ def make_ann(seed = 0):
 # save_model + load_model — round trip
 # ============================================================
 def test_save_and_load_round_trip(tmp_path):
-    """Save a model, load it back, and verify it produces identical predictions."""
+    
+    # Save a model, load it back, and verify it produces identical predictions.
     ann = make_ann(seed=42)
 
     # Some training-time attributes save_model writes to the file.

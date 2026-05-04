@@ -25,6 +25,8 @@ def assert_equal(actual, expected):
 # ============================================================
 
 def test_biases_setter_list():
+    
+    # in our version is premitted and it gets turned into numpy array internally
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     layer.biases = [[1], [0]]
     assert_equal(layer.biases, [[1], [0]])

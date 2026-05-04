@@ -32,7 +32,7 @@ def test_compute_derivatives_relu():
     derivs = layer.compute_activation_derivatives()
     
     # [[3], [5]], both positive so derivatives should be 1
-    # derivatives are stored flat (the deltas) on purpose
+    # derivatives are stored flat on purpose in base_python
     assert_equal(derivs, [1, 1])
 
 
@@ -44,7 +44,7 @@ def test_compute_derivatives_relu_negative():
     derivs = layer.compute_activation_derivatives()
     
     # [[-4], [-4]], both negative so derivatives should be 0
-    # derivatives are stored flat (the deltas) on purpose
+    # derivatives are stored flat on purpose
     assert_equal(derivs, [0, 0])
 
 

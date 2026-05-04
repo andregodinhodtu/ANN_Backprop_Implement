@@ -9,9 +9,8 @@ from ANN_numpy import ANN_numpy as ANN
 # Helper: build a small standard network for reuse
 # ============================================================
 def make_ann(seed = 0):
-    
-    rng = np.random.default_rng(seed)
     """Build a small reproducible 4 → 5 → 2 network."""
+    rng = np.random.default_rng(seed)
     return ANN(
         n_layers=3,
         n_neurons_each_layer=[4, 5, 2],
@@ -20,7 +19,6 @@ def make_ann(seed = 0):
         loss_function="binarycrossentropy",
         rng = rng,
     )
-
 
 # ============================================================
 # prediction — happy path: single sample
@@ -35,7 +33,8 @@ def test_prediction_single_sample_shape():
 
 
 def test_prediction_single_sample_sigmoid_range():
-    """Output activation is sigmoid, so all outputs must be in (0, 1)."""
+    
+    # Output activation is sigmoid, so all outputs must be in (0, 1).
     ann = make_ann()
     x = np.random.default_rng(0).normal(size=(4, 1))
     y = ann.prediction(x)
@@ -101,7 +100,8 @@ def test_prediction_rejects_wrong_feature_dim():
 
 
 def test_prediction_rejects_transposed_batch():
-    """A common user mistake: passing (batch_size, n_features) instead of (n_features, batch_size)."""
+    
+    # A common user mistake: passing (batch_size, n_features) instead of (n_features, batch_size).
     ann = make_ann()
     # batch of 7 samples, 4 features each, but transposed → shape (7, 4)
     bad = np.zeros((7, 4))

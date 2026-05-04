@@ -6,9 +6,8 @@ from ANN_numpy import ANN_numpy as ANN
 
 
 def make_ann(seed = 0):
-    
-    rng = np.random.default_rng(seed)
     """Build a small reproducible 4 → 5 → 2 network."""
+    rng = np.random.default_rng(seed)
     return ANN(
         n_layers=3,
         n_neurons_each_layer=[4, 5, 2],
@@ -35,7 +34,8 @@ def test_compute_gradients_sample_sets_dweights_and_dbiases():
 
 
 def test_compute_gradients_sample_shapes():
-    """dweights matches weights shape; dbiases matches biases shape."""
+    
+    # dweights matches weights shape; dbiases matches biases shape.
     ann = make_ann()
     x = np.ones((4, 1))
     y = np.array([[1.0], [0.0]])
@@ -51,7 +51,8 @@ def test_compute_gradients_sample_shapes():
 # compute_gradients_sample — gradient direction sanity
 # ============================================================
 def test_compute_gradients_sample_decreases_loss():
-    """A small step in the negative-gradient direction should reduce the loss."""
+    
+    # A small step in the negative-gradient direction should reduce the loss.
     ann = make_ann(seed=42)
     x = np.array([[0.5], [-0.3], [0.1], [0.8]])
     y = np.array([[1.0], [0.0]])
@@ -103,7 +104,9 @@ def test_compute_gradients_sample_rejects_non_numeric_target():
 # compute_gradients_sample — ValueError cases
 # ============================================================
 def test_compute_gradients_sample_rejects_batch_input():
-    """Function is single-sample only; batch should raise."""
+    
+    # Function is single-sample only; batch should raise.
+    # single sample kept for completness
     ann = make_ann()
     x = np.zeros((4, 3))   # batch of 3
     y = np.zeros((2, 1))

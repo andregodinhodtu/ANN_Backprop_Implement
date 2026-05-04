@@ -30,7 +30,8 @@ def test_compute_derivatives_relu():
     layer.biases  = [[0], [0]]
     layer.forward([[3], [5]])
     derivs = layer.compute_activation_derivatives()
-    # z_s = [[3], [5]], both positive so derivatives should be 1
+    
+    # [[3], [5]], both positive so derivatives should be 1
     assert_equal(derivs, [[1], [1]])
 
 
@@ -79,6 +80,8 @@ def test_compute_derivatives_shape():
     layer.biases  = [[0], [0], [0]]
     layer.forward([[1], [2]])
     derivs = layer.compute_activation_derivatives()
+    
+    #shape of numpy differs from base python
     assert np.array(derivs).shape == (3, 1)
 
 
@@ -99,8 +102,9 @@ def test_compute_derivatives_stored():
 # ============================================================
 
 def test_compute_derivatives_z_s_column_vector_shape():
-    """z_s must be a column vector of shape (n_neurons_output, 1),
-    and derivatives must preserve that shape."""
+    
+    # z_s must be a column vector of shape (n_neurons_output, 1),
+    # and derivatives must preserve that shape.
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=3, activation_function="relu")
     layer.weights = [[1, 0], [0, 1], [1, 1]]
     layer.biases  = [[0], [0], [0]]

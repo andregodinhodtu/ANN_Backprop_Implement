@@ -33,7 +33,8 @@ def test_forward_correct_output_relu(input_vector, expected):
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     layer.weights = [[1, 1], [0, 1]]
     layer.biases  = [[1], [0]]
-
+    
+    
     result = layer.forward(input_vector)
     assert_matrix_equal(result, expected)
 
@@ -117,7 +118,8 @@ def test_forward_stores_z_s_and_a_s():
     layer.biases  = [[0], [0]]
 
     layer.forward([[3], [5]])
-
+    
+    # populated ANN check
     assert layer.z_s is not None
     assert layer.a_s is not None
     assert len(layer.z_s) == 2
@@ -171,7 +173,9 @@ def test_forward_empty_input():
 # ============================================================
 
 def test_forward_accepts_batch():
-    """NumPy treats multi-column input as a batch of samples."""
+    
+    #NumPy treats multi-column input as a batch of samples.
+    
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     layer.weights = [[1, 0], [0, 1]]
     layer.biases  = [[0], [0]]
@@ -181,12 +185,14 @@ def test_forward_accepts_batch():
                             [2, 4]])
     out = layer.forward(input_batch)
 
-    expected = np.array([[1, 3], [2, 4]])
+    expected = np.array([[1, 3], 
+                         [2, 4]])
     assert_matrix_equal(out, expected)
 
 
 def test_forward_batch_matches_individual_calls():
-    """Batched forward must produce the same result as sample-by-sample calls."""
+    
+    # Batched forward must produce the same result as sample-by-sample calls.
     layer = ANN_Layer(n=0, n_neurons_input=3, n_neurons_output=2, activation_function="relu")
     layer.weights = [[0.5, -1.0, 0.2], [1.0, 0.3, -0.4]]
     layer.biases  = [[0.1], [-0.2]]

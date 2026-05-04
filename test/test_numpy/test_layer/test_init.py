@@ -16,6 +16,7 @@ def test_input_layer():
         n_neurons_output=3,
         activation_function="relu"
     )
+    # 
     assert layer.n == 0
     assert layer.n_neurons_input == 5
     assert layer.n_neurons_output == 3

@@ -41,6 +41,8 @@ def make_layer_with_gradients():
 # ============================================================
 
 def test_update_weights_correct():
+    
+    # testing update 
     layer = make_layer_with_gradients()
     old_weights = np.array(layer.weights).copy()
     layer.update_parameters(learning_rate=0.1)
@@ -57,6 +59,8 @@ def test_update_biases_correct():
 
 
 def test_update_weights_with_l2():
+    
+    # l2 regularization affects weights
     layer = make_layer_with_gradients()
     old_weights = np.array(layer.weights).copy()
     layer.update_parameters(learning_rate=0.1, l2_lambda=0.01)
@@ -65,6 +69,8 @@ def test_update_weights_with_l2():
 
 
 def test_l2_does_not_affect_biases():
+    
+    # l2 regularization does not affect biases
     layer = make_layer_with_gradients()
     old_biases = np.array(layer.biases).copy()
     layer.update_parameters(learning_rate=0.1, l2_lambda=0.99)
@@ -77,6 +83,8 @@ def test_l2_does_not_affect_biases():
 # ============================================================
 
 def test_intermediates_cleared_after_update():
+    
+    # clean parameters in the middle
     layer = make_layer_with_gradients()
     layer.update_parameters(learning_rate=0.1)
     assert layer.dweights is None

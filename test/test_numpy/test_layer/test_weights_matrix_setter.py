@@ -25,6 +25,8 @@ def assert_equal(actual, expected):
 # ============================================================
 
 def test_weights_setter_list():
+    
+    # just setting weights
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     layer.weights = [[1, 0], [0, 1]]
     assert_equal(layer.weights, [[1, 0], [0, 1]])

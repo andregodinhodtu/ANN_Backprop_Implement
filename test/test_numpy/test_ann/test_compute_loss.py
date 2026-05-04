@@ -6,9 +6,8 @@ from ANN_numpy import ANN_numpy as ANN
 
 
 def make_ann(seed = 0):
-    
-    rng = np.random.default_rng(seed)
     """Build a small reproducible 4 → 5 → 2 network."""
+    rng = np.random.default_rng(seed)
     return ANN(
         n_layers=3,
         n_neurons_each_layer=[4, 5, 2],
@@ -31,7 +30,7 @@ def test_compute_loss_returns_float():
 
 
 def test_compute_loss_is_non_negative():
-    """BCE is always >= 0."""
+     # BCE LOSS is always >= 0
     ann = make_ann()
     rng = np.random.default_rng(0)
     X = rng.normal(size=(4, 5))
@@ -41,7 +40,9 @@ def test_compute_loss_is_non_negative():
 
 
 def test_compute_loss_single_vs_batch_consistency():
-    """Mean loss over a batch == mean of per-sample losses."""
+    
+    # Mean loss over a batch must be the
+    # mean of per-sample losses.
     ann = make_ann(seed=42)
     rng = np.random.default_rng(1)
     X = rng.normal(size=(4, 6))
@@ -72,14 +73,14 @@ def test_compute_loss_rejects_non_ndarray_Y():
 
 def test_compute_loss_rejects_non_numeric_X():
     ann = make_ann()
-    bad_X = np.array([["a"]] * 4)  # dtype '<U1'
+    bad_X = np.array([["a"]] * 4)
     with pytest.raises(TypeError):
         ann.compute_loss(bad_X, np.zeros((2, 1)))
 
 
 def test_compute_loss_rejects_non_numeric_Y():
     ann = make_ann()
-    bad_Y = np.array([["a"], ["b"]])  # dtype '<U1'
+    bad_Y = np.array([["a"], ["b"]])
     with pytest.raises(TypeError):
         ann.compute_loss(np.zeros((4, 1)), bad_Y)
 

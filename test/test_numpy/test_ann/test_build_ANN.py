@@ -31,17 +31,17 @@ def test_build_standard_ANN():
         loss_function="binarycrossentropy",
     )
 
-    # 3 layers in the architecture => 2 weight layers between them
+    # 3 layers in the architecture,  2 weight layers between them
     assert len(ann.layers) == 2
 
-    # Verify first layer (input -> hidden)
+    # Verify first layer (input - hidden)
     layer_0_to_1 = ann.layers[0]
     assert layer_0_to_1.n_neurons_input == 4
     assert layer_0_to_1.n_neurons_output == 5
     assert layer_0_to_1.n == 1  # n=i+1 with i=0
     assert layer_0_to_1.activation_function == "relu"
 
-    # Verify second layer (hidden -> output)
+    # Verify second layer (hidden - output)
     layer_1_to_2 = ann.layers[1]
     assert layer_1_to_2.n_neurons_input == 5
     assert layer_1_to_2.n_neurons_output == 2
@@ -50,7 +50,6 @@ def test_build_standard_ANN():
 
 
 def test_build_deep_ANN():
-    """Deeper net, make sure layer count and shapes propagate correctly."""
     ann = ANN(
         n_layers=5,
         n_neurons_each_layer=[10, 8, 6, 4, 2],
@@ -102,8 +101,7 @@ def test_weights_setter_wrong_shape():
         activation_function="relu",
     )
 
-    # Expected shape is (n_neurons_output, n_neurons_input) == (5, 4).
-    # Adjust if your convention is the transpose.
+    # Expected shape is n_neurons_output, n_neurons_input (5, 4).
     with pytest.raises(ValueError):
         layer.weights = np.zeros((4, 5))   # transposed
 
