@@ -30,7 +30,9 @@ def test_compute_derivatives_relu():
     layer.biases  = [[0], [0]]
     layer.forward([[3], [5]])
     derivs = layer.compute_activation_derivatives()
-    # z_s = [[3], [5]], both positive so derivatives should be 1
+    
+    # [[3], [5]], both positive so derivatives should be 1
+    # derivatives are stored flat (the deltas) on purpose
     assert_equal(derivs, [1, 1])
 
 
@@ -40,7 +42,9 @@ def test_compute_derivatives_relu_negative():
     layer.biases  = [[-5], [-5]]
     layer.forward([[1], [1]])
     derivs = layer.compute_activation_derivatives()
-    # z_s = [[-4], [-4]], both negative so derivatives should be 0
+    
+    # [[-4], [-4]], both negative so derivatives should be 0
+    # derivatives are stored flat (the deltas) on purpose
     assert_equal(derivs, [0, 0])
 
 
@@ -51,10 +55,12 @@ def test_compute_derivatives_sigmoid():
     layer.forward([[1], [2]])
     derivs = layer.compute_activation_derivatives()
 
+    # quick sigmoid helper
     def sigmoid_deriv(z):
         s = 1 / (1 + np.exp(-z))
         return s * (1 - s)
 
+    # derivatives stored flat
     expected = [sigmoid_deriv(1), sigmoid_deriv(2)]
     assert_equal(derivs, expected)
 
@@ -65,7 +71,8 @@ def test_compute_derivatives_leaky_relu():
     layer.biases  = [[0], [0]]
     layer.forward([[3], [-2]])
     derivs = layer.compute_activation_derivatives()
-    # z_s = [[3], [-2]], positive -> 1, negative -> 0.01
+    
+    # [[3], [-2]], positive -> 1, negative -> 0.01
     assert_equal(derivs, [1, 0.01])
 
 
@@ -79,6 +86,8 @@ def test_compute_derivatives_shape():
     layer.biases  = [[0], [0], [0]]
     layer.forward([[1], [2]])
     derivs = layer.compute_activation_derivatives()
+    
+    # assert once again shape shoud be flat
     assert np.array(derivs).shape == (3,)
 
 
@@ -92,6 +101,7 @@ def test_compute_derivatives_stored():
     layer.biases  = [[0], [0]]
     layer.forward([[1], [2]])
     layer.compute_activation_derivatives()
+    # stored
     assert layer.activation_derivatives is not None
 
 

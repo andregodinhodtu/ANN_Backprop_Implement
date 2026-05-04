@@ -11,6 +11,8 @@ from ANN_base_python import ANN_base_python as ANN
 # ============================================================
 
 def test_input_ANN():
+    
+    # assignments are correct
     ann = ANN(
         n_layers=3,
         n_neurons_each_layer=[4, 5, 2],
@@ -39,6 +41,7 @@ def test_all_hidden_activations(activation_hidden):
 
 @pytest.mark.parametrize("activation_output", ["relu", "sigmoid", "leaky_relu"])
 def test_all_output_activations(activation_output):
+    
     # Use a loss function that doesn't constrain the output activation
     ann = ANN(
         n_layers=2,
@@ -63,7 +66,8 @@ def test_initial_state():
         loss_function="binarycrossentropy",
     )
     assert ann.layers is not None
-    assert len(ann.layers) == 2  # n_layers - 1 connections (4->5, 5->2)
+    # n_layers - 1 connections (4->5, 5->2)
+    assert len(ann.layers) == 2
     assert ann.rng is not None
 
 
@@ -84,6 +88,7 @@ def test_rng_passed_through():
 # ValueError tests
 # ============================================================
 
+# Error scenarios
 @pytest.mark.parametrize(
     "n_layers, n_neurons_each_layer, activation_hidden, activation_output, loss_function",
     [

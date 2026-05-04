@@ -25,13 +25,16 @@ def assert_equal(actual, expected):
 # ============================================================
 
 def test_biases_setter_list():
+    
+    # simple test to setter
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     layer.biases = [[1], [0]]
     assert_equal(layer.biases, [[1], [0]])
 
 
 def test_biases_setter_rejects_numpy():
-    """Base Python implementation must reject numpy arrays."""
+    
+    # Base Python implementation must reject Numpy arrays.
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     with pytest.raises(TypeError):
         layer.biases = np.array([[1], [0]])
@@ -44,7 +47,7 @@ def test_biases_setter_rejects_numpy():
 @pytest.mark.parametrize("bad_biases", [
     "not a list",           # string
     123,                    # int
-    [1, 2],                 # flat list, not list of lists
+    [1, 2],                 # flat list, not a nested list
     [[1], ["a"]],           # non-numeric values
 ])
 def test_biases_setter_wrong_type(bad_biases):
@@ -59,7 +62,7 @@ def test_biases_setter_wrong_type(bad_biases):
 
 @pytest.mark.parametrize("bad_biases", [
     [[1], [0], [1]],        # too many rows
-    [[1, 0], [0, 1]],       # more than 1 column
+    [[1, 0], [0, 1]],       # more than 1 column "batch" not accepted
     [[1]],                  # too few rows
 ])
 def test_biases_setter_wrong_shape(bad_biases):

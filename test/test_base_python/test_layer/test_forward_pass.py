@@ -117,7 +117,8 @@ def test_forward_stores_z_s_and_a_s():
     layer.biases  = [[0], [0]]
 
     layer.forward([[3], [5]])
-
+    
+    # assert that z_s and a_s are populated
     assert layer.z_s is not None
     assert layer.a_s is not None
     print(layer.z_s)

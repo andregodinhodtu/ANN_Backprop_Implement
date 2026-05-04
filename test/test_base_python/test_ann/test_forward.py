@@ -29,14 +29,16 @@ def test_prediction_single_sample_shape():
     x = [[0.0], [0.0], [0.0], [0.0]]
     y = ann.prediction(x)
 
-    # Output is a list-of-lists, shape (2, 1)
+    # Output is a nested list
+    # shape (2, 1)
     assert isinstance(y, list)
     assert len(y) == 2
     assert all(len(row) == 1 for row in y)
 
 
 def test_prediction_single_sample_sigmoid_range():
-    """Output activation is sigmoid, so all outputs must be in (0, 1)."""
+    
+    # Output activation is sigmoid, so all outputs must be in (0, 1)
     ann = make_ann()
     rng = random.Random(0)
     x = [[rng.gauss(0, 1)] for _ in range(4)]
@@ -59,12 +61,15 @@ def test_prediction_rejects_non_list():
 def test_prediction_rejects_rows_not_lists():
     ann = make_ann()
     with pytest.raises(TypeError):
-        ann.prediction([1.0, 2.0, 3.0, 4.0])  # flat list, rows aren't lists
+        # flat list, rows aren't lists
+        # only nested lists work
+        ann.prediction([1.0, 2.0, 3.0, 4.0])
 
 
 def test_prediction_rejects_non_numeric_values():
     ann = make_ann()
     with pytest.raises(TypeError):
+        # non numeric values
         ann.prediction([["a"], ["b"], ["c"], ["d"]])
 
 
@@ -78,14 +83,17 @@ def test_prediction_rejects_empty_input():
 
 
 def test_prediction_rejects_multi_column_rows():
-    """Each row in input_vector must contain exactly 1 element."""
     ann = make_ann()
     with pytest.raises(ValueError):
+        # This is a nested list but not in vector format
+        # This is a batch to be precise and it should not be 
+        # accepted in here
         ann.prediction([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]])
 
 
 def test_prediction_rejects_wrong_feature_dim():
-    """Network expects 4 features; pass 3."""
+    
+    # Network expects 4 features; pass 3
     ann = make_ann()
     with pytest.raises(ValueError):
         ann.prediction([[1.0], [2.0], [3.0]])

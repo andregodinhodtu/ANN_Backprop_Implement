@@ -1,8 +1,6 @@
 import sys
 
 sys.path.append("src/base_python_version")
-
-
 import pytest
 from ANN_layer_base_python import ANN_Layer_base_python as ANN_Layer
 
@@ -17,6 +15,8 @@ def test_input_layer():
         n_neurons_output=3,
         activation_function="relu"
     )
+    
+    # assert correct initialization
     assert layer.n == 0
     assert layer.n_neurons_input == 5
     assert layer.n_neurons_output == 3

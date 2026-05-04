@@ -30,7 +30,8 @@ def make_layer_with_gradients():
     layer.biases  = [[0.0], [0.0]]
     layer.forward([[1], [2]])
     layer.compute_activation_derivatives()
-    # Manually set gradients (base Python expects list-of-lists)
+    
+    # Manually set gradients, shape is the same has the weights
     layer.dweights = [[0.1, 0.2], [0.3, 0.4]]
     layer.dbiases  = [[0.1], [0.2]]
     return layer
@@ -57,6 +58,7 @@ def test_update_biases_correct():
 
 
 def test_update_weights_with_l2():
+    # testing l2!
     layer = make_layer_with_gradients()
     old_weights = np.array(layer.weights).copy()
     layer.update_parameters(learning_rate=0.1, l2_lambda=0.01)
@@ -79,6 +81,8 @@ def test_l2_does_not_affect_biases():
 def test_intermediates_cleared_after_update():
     layer = make_layer_with_gradients()
     layer.update_parameters(learning_rate=0.1)
+    
+    # clear variables after updating the parameters
     assert layer.dweights is None
     assert layer.dbiases is None
     assert layer.delta is None

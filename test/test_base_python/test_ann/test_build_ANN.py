@@ -17,17 +17,17 @@ def test_build_standard_ANN():
         loss_function="binarycrossentropy",
     )
 
-    # 3 layers in the architecture => 2 weight layers between them
+    # 3 layers in the architecture so expected to have 2 weight layers between them
     assert len(ann.layers) == 2
 
-    # Verify first layer (input -> hidden)
+    # Verify first layer (input to hidden)
     layer_0_to_1 = ann.layers[0]
     assert layer_0_to_1.n_neurons_input == 4
     assert layer_0_to_1.n_neurons_output == 5
     assert layer_0_to_1.n == 1  # n=i+1 with i=0
     assert layer_0_to_1.activation_function == "relu"
 
-    # Verify second layer (hidden -> output)
+    # Verify second layer (hidden to output)
     layer_1_to_2 = ann.layers[1]
     assert layer_1_to_2.n_neurons_input == 5
     assert layer_1_to_2.n_neurons_output == 2
@@ -51,7 +51,7 @@ def test_build_deep_ANN():
         assert layer.n_neurons_input == n_in
         assert layer.n_neurons_output == n_out
 
-    # Only the last layer uses the output activation
+    # Last layer uses the output activation
     assert ann.layers[-1].activation_function == "sigmoid"
     for layer in ann.layers[:-1]:
         assert layer.activation_function == "relu"
@@ -91,12 +91,16 @@ def test_weights_setter_wrong_shape():
         activation_function="relu",
     )
 
-    # Expected shape is (n_neurons_output, n_neurons_input) == (5, 4).
+    # Expected shape is (n_neurons_output, n_neurons_input) == (5, 4)
+    
     with pytest.raises(ValueError):
-        layer.weights = [[0.0] * 5 for _ in range(4)]   # transposed (4, 5)
+         # transposed (4, 5)
+        layer.weights = [[0.0] * 5 for _ in range(4)] 
 
     with pytest.raises(ValueError):
-        layer.weights = [[0.0] * 5 for _ in range(5)]   # wrong input dim (5, 5)
+        # wrong input dim (5, 5)
+        layer.weights = [[0.0] * 5 for _ in range(5)]
 
     with pytest.raises(ValueError):
-        layer.weights = [[0.0] * 4 for _ in range(3)]   # wrong output dim (3, 4)
+        # wrong output dim (3, 4)
+        layer.weights = [[0.0] * 4 for _ in range(3)]

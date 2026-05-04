@@ -25,8 +25,9 @@ def test_compute_deltas_sets_delta_on_every_layer():
     ann = make_ann()
     x = [[1.0], [1.0], [1.0], [1.0]]
     y = [[1.0], [0.0]]
-
-    ann.prediction(x)             # populates a_s and z_s on each layer
+    
+    # populates a_s and z_s on each layer
+    ann.prediction(x)
     ann._compute_deltas(y)
 
     for layer in ann.layers:
@@ -34,27 +35,27 @@ def test_compute_deltas_sets_delta_on_every_layer():
 
 
 def test_compute_deltas_lengths_match_layer_outputs():
-    """In the base-Python version, layer.delta is a flat list of length n_neurons_output."""
     ann = make_ann()
     x = [[1.0], [1.0], [1.0], [1.0]]
     y = [[1.0], [0.0]]
 
     ann.prediction(x)
     ann._compute_deltas(y)
-
+    
+    # deltas are expected to be stored in a flat list
     for layer in ann.layers:
         assert len(layer.delta) == layer.n_neurons_output
 
 
 def test_compute_deltas_output_layer_bce_sigmoid_shortcut():
-    """For BCE + sigmoid output, output-layer delta should equal (a - y)."""
     ann = make_ann(seed=42)
     x = [[0.5], [-0.3], [0.1], [0.8]]
     y = [[1.0], [0.0]]
 
     a_pred = ann.prediction(x)
     ann._compute_deltas(y)
-
+    
+    "BCE + sigmoid output, output-layer delta should equal (a - y)"
     output_layer = ann.layers[-1]
     expected = [a_pred[j][0] - y[j][0] for j in range(output_layer.n_neurons_output)]
 

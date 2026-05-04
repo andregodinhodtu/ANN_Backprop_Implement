@@ -1,7 +1,6 @@
 import sys
 sys.path.append("src/base_python_version")
 import random
-import copy
 import pytest
 from ANN_base_python import ANN_base_python as ANN
 
@@ -28,27 +27,28 @@ def test_compute_gradients_sample_sets_dweights_and_dbiases():
     y = [[1.0], [0.0]]
 
     ann.compute_gradients_sample(x, y)
-
+    
+    # For one sample we populate dweights and dbiases
     for layer in ann.layers:
         assert layer.dweights is not None
         assert layer.dbiases is not None
 
 
 def test_compute_gradients_sample_shapes():
-    """dweights matches weights shape; dbiases matches biases shape."""
     ann = make_ann()
     x = [[1.0], [1.0], [1.0], [1.0]]
     y = [[1.0], [0.0]]
 
     ann.compute_gradients_sample(x, y)
-
+    
+    # Asserting that the weights has the same dimensions of the derivatives
     for layer in ann.layers:
-        # dweights: (n_out, n_in)
+        # dweights (n_out, n_in)
         assert len(layer.dweights) == len(layer.weights)
         for dw_row, w_row in zip(layer.dweights, layer.weights):
             assert len(dw_row) == len(w_row)
 
-        # dbiases: (n_out, 1)
+        # dbiases (n_out, 1)
         assert len(layer.dbiases) == len(layer.biases)
         for db_row, b_row in zip(layer.dbiases, layer.biases):
             assert len(db_row) == len(b_row)
@@ -84,7 +84,8 @@ def test_compute_gradients_sample_decreases_loss():
         ]
         layer._weights = new_w
         layer._biases  = new_b
-
+        
+    # Ensure that the step decreases the loss!
     loss_after = ann.compute_loss([x], [y])
     assert loss_after < loss_before
 
@@ -93,6 +94,7 @@ def test_compute_gradients_sample_decreases_loss():
 # compute_gradients_sample — ValueError cases
 # ============================================================
 def test_compute_gradients_sample_rejects_wrong_input_dim():
+    """ Dimensions checks"""
     ann = make_ann()
     # Network expects 4 input features, give it 3
     with pytest.raises(ValueError):

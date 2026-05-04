@@ -31,7 +31,8 @@ def test_weights_setter_list():
 
 
 def test_weights_setter_rejects_numpy():
-    """Base Python implementation must reject numpy arrays."""
+    
+    # Base Python implementation must reject numpy arrays.
     layer = ANN_Layer(n=0, n_neurons_input=2, n_neurons_output=2, activation_function="relu")
     with pytest.raises(TypeError):
         layer.weights = np.array([[1, 0], [0, 1]])

@@ -19,6 +19,7 @@ def assert_equal(actual, expected):
         f"Shape mismatch: got {actual_arr.shape}, expected {expected_arr.shape}"
     )
     assert np.allclose(actual_arr, expected_arr)
+    
 
 
 # ============================================================
