@@ -3,7 +3,7 @@ import math
 
 
 class ANN_Layer_base_python():
-
+    
     ACTIVATION_FUNCTIONS = {
         "relu": {
             "func": lambda x: max(0, x),
@@ -25,10 +25,9 @@ class ANN_Layer_base_python():
         """
         Initialize a layer in the neural network.
 
-        Parameters
-        ----------
+        Parameters:
         n : int
-            Layer index / identifier in the network.
+            Layer index 
         n_neurons_input : int
             Number of input neurons coming into this layer.
         n_neurons_output : int
@@ -37,7 +36,7 @@ class ANN_Layer_base_python():
             Activation function. Must be a key in `ACTIVATION_FUNCTIONS`.
         """
 
-        # --- Type checks ---
+        # Type checks
         if not isinstance(n, int):
             raise TypeError("n must be an Integer")
         if not isinstance(n_neurons_input, int):
@@ -47,7 +46,7 @@ class ANN_Layer_base_python():
         if not isinstance(activation_function, str):
             raise TypeError("activation_function should be a String")
 
-        # --- Value checks ---
+        # Value checks
         if n < 0:
             raise ValueError("n must be >= 0")
         if n_neurons_input <= 0:
@@ -57,35 +56,34 @@ class ANN_Layer_base_python():
         if activation_function not in self.ACTIVATION_FUNCTIONS:
             raise ValueError(f"Unknown activation function: {activation_function}")
 
-        # --- Layer structure ---
+        # Layer structure
         self.n = n
         self.n_neurons_input = n_neurons_input
         self.n_neurons_output = n_neurons_output
         self.activation_function = activation_function
 
-        # --- Parameters (backing storage for the properties) ---
-        # weights:  shape (n_neurons_output, n_neurons_input)
-        # biases:   shape (n_neurons_output, 1)
+        # Parameters (backing storage for the properties)
         self._weights = None
         self._biases = None
 
-        # --- Intermediate values (forward pass) ---
+        # Intermediate values (forward pass)
         self.z_s = None
         self.a_s = None
 
-        # --- Backpropagation ---
+        # Backpropagation
         self.activation_derivatives = None
         self.delta = None
         self.dweights = None
         self.dbiases = None
 
     def __call__(self, input_vector):
-        """Enables calling the layer like a function: layer(input_vector)."""
+        """
+        Enables calling the layer like a function: layer(input_vector).
+        Performs the forward pass and returns the activated output.
+        """
+        # useful outside, code intution in ANN
         return self.forward(input_vector)
 
-    # ------------------------------------------------------------------
-    # weights property
-    # ------------------------------------------------------------------
     @property
     def weights(self):
         """Getter for weights."""
@@ -105,9 +103,6 @@ class ANN_Layer_base_python():
 
         self._weights = new_weights
 
-    # ------------------------------------------------------------------
-    # biases property
-    # ------------------------------------------------------------------
     @property
     def biases(self):
         """Getter for biases."""
@@ -127,9 +122,6 @@ class ANN_Layer_base_python():
 
         self._biases = new_biases
 
-    # ------------------------------------------------------------------
-    # Display
-    # ------------------------------------------------------------------
     def _print_matrix(self, matrix):
         """Pretty-print a 2D matrix with 3 decimal places per cell."""
         for row in matrix:
@@ -145,7 +137,7 @@ class ANN_Layer_base_python():
         print(f"Biases for layer number {self.n}:")
         self._print_matrix(self.biases)
 
-    def shape(self, what):
+    def _shape(self, what):
         """Return the shape of the layer's weights, biases, or output."""
         if what == "weights":
             return (len(self._weights), len(self._weights[0]) if self._weights else 0)
@@ -156,9 +148,6 @@ class ANN_Layer_base_python():
         else:
             raise ValueError("Invalid argument for 'what'. Choose 'weights', 'biases', or 'output'.")
 
-    # ------------------------------------------------------------------
-    # Initialization
-    # ------------------------------------------------------------------
     def initialize_weights_bias(self, rng=None):
         """
         Initialize weights based on the activation function:
@@ -174,24 +163,22 @@ class ANN_Layer_base_python():
         """
         if rng is None:
             rng = random.Random()
-
+        
+        # Pick initialization strategy based on activation function
         if self.activation_function in ("relu", "leaky_relu"):
             # He initialization
             std = math.sqrt(2 / self.n_neurons_input)
-        else:
+        else:c
             # Xavier / Glorot initialization
             std = math.sqrt(2 / (self.n_neurons_input + self.n_neurons_output))
 
-        # Assignments go through the setters → shape/type validation runs.
+        # Assignments go through the setters (shape/type validation runs)
         self.weights = [
             [rng.gauss(0, std) for _ in range(self.n_neurons_input)]
             for _ in range(self.n_neurons_output)
         ]
         self.biases = [[0.0] for _ in range(self.n_neurons_output)]
 
-    # ------------------------------------------------------------------
-    # Forward pass helpers
-    # ------------------------------------------------------------------
     def _matrix_multiply(self, input_vector):
         """Multiply the weight matrix by the input vector (column form)."""
         output_vector = []
@@ -201,7 +188,7 @@ class ANN_Layer_base_python():
         return output_vector
 
     def _add_biases(self, output_matrix):
-        """Add the bias vector to a pre-activation output matrix."""
+        """Add the bias vector after matrix multiply."""
         return [
             [output_matrix[i][0] + self._biases[i][0]]
             for i in range(self.n_neurons_output)
@@ -211,17 +198,15 @@ class ANN_Layer_base_python():
         """
         Compute the full forward pass of the layer: a = f(W * x + b).
 
-        Parameters
-        ----------
+        Parameters:
         input_vector : list of lists
             Column vector of shape (n_neurons_input, 1).
 
-        Returns
-        -------
+        Returns:
         list of lists
             Activated output a, shape (n_neurons_output, 1).
         """
-        # --- Type checks ---
+        # Type checks
         if not isinstance(input_vector, list):
             raise TypeError("input_vector must be a list of lists")
         if not all(isinstance(row, list) for row in input_vector):
@@ -229,19 +214,19 @@ class ANN_Layer_base_python():
         if not all(isinstance(val, (int, float)) for row in input_vector for val in row):
             raise TypeError("All values in input_vector must be ints or floats")
 
-        # --- Value checks ---
+        # Value checks
         if len(input_vector) == 0:
             raise ValueError("input_vector cannot be empty")
         if any(len(row) != 1 for row in input_vector):
             raise ValueError("Each row in input_vector must contain 1 element")
 
-        # --- State checks ---
+        # State checks
         if self._weights is None:
             raise ValueError("Weights are not initialized. Run initialize_weights_bias() first.")
         if self._biases is None:
             raise ValueError("Biases are not initialized. Run initialize_weights_bias() first.")
 
-        # --- Dimension compatibility check ---
+        # Dimension compatibility check
         n_inputs = len(self._weights[0])
         if len(input_vector) != n_inputs:
             raise ValueError(
@@ -259,54 +244,50 @@ class ANN_Layer_base_python():
 
         return self.a_s
 
-    # ------------------------------------------------------------------
-    # Backprop helpers
-    # ------------------------------------------------------------------
     def compute_activation_derivatives(self):
         """Compute and store f'(z) for this layer."""
         if self.z_s is None:
             raise ValueError("z_s is not computed. Run forward() first.")
         if len(self.z_s) == 0:
             raise ValueError("z_s is empty.")
-
+        
+        # Fetch the activation function this layer was initialized with
         deriv_func = self.ACTIVATION_FUNCTIONS[self.activation_function]['deriv']
         self.activation_derivatives = [deriv_func(z[0]) for z in self.z_s]
         return self.activation_derivatives
 
     def update_parameters(self, learning_rate, l2_lambda=0.0):
         """
-        Update weights and biases using stored gradients with optional L2
-        regularization, then clear intermediate variables.
+        Update weights and biases using the stored gradients with optional
+        L2 regularization, then clear intermediate variables.
 
-        Parameters
-        ----------
+        Parameters:
+        
         learning_rate : float
             Learning rate for gradient descent.
         l2_lambda : float
             L2 regularization coefficient. Default 0.0 (no regularization).
         """
-        # --- Type checks ---
+        # Type checks 
         if not isinstance(learning_rate, (int, float)):
             raise TypeError("learning_rate must be a number")
         if not isinstance(l2_lambda, (int, float)):
             raise TypeError("l2_lambda must be a number")
 
-        # --- Value checks ---
+        # Value checks
         if learning_rate <= 0:
             raise ValueError("learning_rate must be > 0")
         if l2_lambda < 0:
             raise ValueError("l2_lambda must be >= 0")
 
-        # --- State checks ---
+        # State checks
         if self.dweights is None:
             raise ValueError("Gradients not computed. Run compute_gradients first.")
         if self.dbiases is None:
             raise ValueError("Gradients not computed. Run compute_gradients first.")
 
         # Update weights with L2 regularization.
-        # Writing to backing field directly: we're rebuilding a fresh list of
-        # lists that is provably the right shape, so re-validating via the
-        # setter would be wasted work in this hot path.
+        # Skip the setter to avoid redundant validation in this hot loop
         self._weights = [
             [
                 self._weights[i][j] - learning_rate * (self.dweights[i][j] + l2_lambda * self._weights[i][j])
@@ -314,13 +295,14 @@ class ANN_Layer_base_python():
             ]
             for i in range(self.n_neurons_output)
         ]
+        
         # Update biases (no regularization).
         self._biases = [
             [self._biases[i][0] - learning_rate * self.dbiases[i][0]]
             for i in range(self.n_neurons_output)
         ]
 
-        # --- Clean up temporary variables ---
+        # Clean up temporary variables
         self.dweights = None
         self.dbiases = None
         self.delta = None
