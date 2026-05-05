@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 import time
 
-# PATH AND INPUT DATA -------------------------------------------------
+# ------------------------------ Paths and Imports ------------------------------
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -14,8 +14,7 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 
 SRC = PROJECT_ROOT / "src"
 SRC_NUMPY = SRC / "numpy_version"
-TRAIN_DATA_FILE = PROJECT_ROOT / "data" / "training_set.howlin"
-TEST_DATA_FILE = PROJECT_ROOT / "data" / "homology_reduced_subset_4.howlin"
+DATA_FOLDER = PROJECT_ROOT / "data"
 MODEL_FOLDER = PROJECT_ROOT / "models"
 
 sys.path.append(str(SRC_NUMPY))
@@ -26,19 +25,15 @@ from ANN_layer_numpy import ANN_Layer_numpy
 from ANN_numpy import ANN_numpy
 from evaluate_numpy import report_results, evaluate
 
-# Sanity check — fails fast with a clear message if the path is wrong
-assert TRAIN_DATA_FILE.exists(), f"Train data file not found at: {TRAIN_DATA_FILE}"
-assert TEST_DATA_FILE.exists(), f"Test data not found at: {TEST_DATA_FILE}"
-
-
-# ANN TRAINING AND TESTING --------------------------------------------------
-
+# ------------------------------------ MAIN --------------------------------------
 
 if __name__ == "__main__":
-
-    # =====================================================================
-    # Hyperparameters & paths — edit these directly
-    # =====================================================================
+    
+    # ------------------------------ Train settings ------------------------------
+    
+    # Data
+    TRAIN_DATA_FILE = DATA_FOLDER / "training_set.howlin"
+    assert TRAIN_DATA_FILE.exists(), f"Train data file not found at: {TRAIN_DATA_FILE}"
 
     # Train settings 
     SEED          = 42
@@ -50,8 +45,9 @@ if __name__ == "__main__":
     DECAY_EVERY   = 20
     L2_LAMBDA     = 1e-4
     PATIENCE      = 50
-    MODEL_NAME    = None              # None = auto-generate timestamped name
-    SAVE_PATH     = "../models"
+    # if None auto-generate timestamped name
+    MODEL_NAME    = None             
+    SAVE_PATH     = str(MODEL_FOLDER)
 
     # Architecture
     N_LAYERS             = 4
@@ -60,12 +56,19 @@ if __name__ == "__main__":
     ACTIVATION_OUTPUT    = "sigmoid"
     LOSS_FUNCTION        = "binarycrossentropy"
 
-    # Test settings
-    MODEL_FILE = MODEL_FOLDER / "numpy_model_20260503_191411.txt"
+    # ------------------------------ Test settings ------------------------------
+    
+    # Data
+    TEST_DATA_FILE = DATA_FOLDER  / "homology_reduced_subset_4.howlin"
+    assert TEST_DATA_FILE.exists(), f"Test data not found at: {TEST_DATA_FILE}"
+    
+    # Model used to test
+    MODEL_FILE = MODEL_FOLDER / "numpy_model_20260505_121015.txt"
 
-  
-    # Mode selection (only thing parsed from the command line)
-   
+      
+    # ---------------------------- CL parsing options ---------------------------
+    
+    # Mode selection
     if len(sys.argv) != 2 or sys.argv[1] not in ("train", "test"):
         print("Usage: python script.py [train|test]")
         sys.exit(1)
@@ -73,7 +76,7 @@ if __name__ == "__main__":
     mode = sys.argv[1]
 
   
-    # TRAIN MODE
+    # ------------------------------- TRAIN MODE --------------------------------
 
     if mode == "train":
         rng = np.random.default_rng(SEED)
@@ -82,6 +85,9 @@ if __name__ == "__main__":
         X_all, Y_all = parse_input(str(TRAIN_DATA_FILE))
         # X_all shape: (n_samples, n_features)
         # Y_all shape: (n_samples,) or (n_samples, 1)
+        
+        # shape is changed to batch inside the train function
+        # we admit some inconsistency 
 
         ones  = int(np.sum(Y_all == 1))
         zeros = len(Y_all) - ones
@@ -158,16 +164,19 @@ if __name__ == "__main__":
         end_time = time.time()
         print(f"Training runtime: {end_time - start_time:.4f} seconds")
 
-    # TEST MODE
+    # ------------------------------- TEST MODE --------------------------------
  
     elif mode == "test":
+        
+        # Loading the model
         ann = ANN_numpy.load_model(str(MODEL_FILE))
 
         X_test, Y_test = parse_input(str(TEST_DATA_FILE))
 
         print("Evaluation started.")
         start_time = time.time()
-
+        
+        # Evaluate handles shaping the batch 
         evaluate(ann, X_test, Y_test, name=str(TEST_DATA_FILE))
 
         end_time = time.time()

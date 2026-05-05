@@ -1,13 +1,33 @@
-"""
-evaluate.py
------------
-Evaluation utilities for a trained binary-classification ANN (NumPy version).
-"""
 import numpy as np
+
+"""
+evaluate_base_python.py
+Evaluation utilities for a trained binary-classification ANN (NumPy version).
+
+Quick reference of what's here:
+
+  Basic metrics (single numbers)
+    accuracy                - fraction of correct predictions
+    confusion_matrix        - dict of TN/FP/FN/TP counts
+    classification_metrics  - dict with precision, recall, F1, etc.
+
+  Data Shaping
+    _to_batch               - shapes the data into the correct batch format
+
+  Printing helpers
+    print_confusion_matrix
+    print_sample_predictions
+
+  High-level reports (what you'll usually call)
+    report_results          - quick post-training summary on train + val
+    evaluate                - full report on one dataset
+"""
 
 
 def _to_batch(X, Y):
-    """Ensure X is (n_features, N) and Y is (1, N)."""
+    """
+    Ensure X is (n_features, N) and Y is (1, N).
+    """
     X = np.asarray(X)
     Y = np.asarray(Y)
     if X.ndim != 2 or Y.ndim != 2:
@@ -29,12 +49,25 @@ def _to_batch(X, Y):
     return X, Y
 
 def accuracy(ann, X, Y, threshold=0.5):
+    """
+    Binary classification accuracy at the given decision threshold.
+    """
     Xb, Yb = _to_batch(X, Y)
     preds = ann.prediction(Xb)            # (1, N)
     pred_labels = (preds >= threshold).astype(int)
     return float(np.mean(pred_labels == Yb.astype(int)))
 
 def confusion_matrix(ann, X, Y, threshold=0.5):
+    """
+    Compute the four counts of the binary confusion matrix.
+
+    Returns:
+    dict with keys: 'tn', 'fp', 'fn', 'tp'
+        tn (true negative):  predicted 0, actual 0
+        fp (false positive): predicted 1, actual 0
+        fn (false negative): predicted 0, actual 1
+        tp (true positive):  predicted 1, actual 1
+    """
     Xb, Yb = _to_batch(X, Y)
     preds = (ann.prediction(Xb) >= threshold).astype(int).reshape(-1)
     labels = Yb.astype(int).reshape(-1)
@@ -46,6 +79,17 @@ def confusion_matrix(ann, X, Y, threshold=0.5):
     return {"tn": tn, "fp": fp, "fn": fn, "tp": tp}
 
 def classification_metrics(ann, X, Y, threshold=0.5):
+    """
+    Compute a full set of classification metrics.
+
+    Returns:
+    dict with keys:
+        accuracy    - overall fraction correct
+        precision   - of predicted positives, how many were correct
+        recall      - of actual positives, how many we caught (sensitivity)
+        specificity - of actual negatives, how many we correctly rejected
+        f1          - harmonic mean of precision and recall
+    """
     cm = confusion_matrix(ann, X, Y, threshold)
     tn, fp, fn, tp = cm["tn"], cm["fp"], cm["fn"], cm["tp"]
     total = tp + tn + fp + fn
@@ -68,6 +112,9 @@ def classification_metrics(ann, X, Y, threshold=0.5):
     }
 
 def print_confusion_matrix(ann, X, Y, threshold=0.5):
+    """
+    Print a nicely formatted confusion matrix.
+    """
     cm = confusion_matrix(ann, X, Y, threshold)
     tn, fp, fn, tp = cm["tn"], cm["fp"], cm["fn"], cm["tp"]
 
@@ -77,6 +124,12 @@ def print_confusion_matrix(ann, X, Y, threshold=0.5):
     print(f"   Actual 1   {fn:>8}  {tp:>8}")
 
 def report_results(ann, X_train, Y_train, X_val, Y_val, threshold=0.5):
+    """
+    Quick post-training summary: sample predictions plus train and val accuracy.
+
+    This is the lightweight report. For a full breakdown (precision, recall,
+    confusion matrix, etc.), use `evaluate` instead.
+    """
     train_acc = accuracy(ann, X_train, Y_train, threshold=threshold)
     val_acc   = accuracy(ann, X_val,   Y_val,   threshold=threshold)
 
@@ -84,6 +137,21 @@ def report_results(ann, X_train, Y_train, X_val, Y_val, threshold=0.5):
     print(f"Validation accuracy: {val_acc:.2%}")
 
 def evaluate(ann, X, Y, threshold=0.5, name="Dataset"):
+    """
+    Run a full evaluation report on a single dataset.
+
+    Prints loss, headline metrics, and confusion matrix.
+
+    Parameters:
+    ann          : trained ANN
+    X, Y         : data and labels
+    threshold    : decision threshold for converting probability -> class
+    name         : label printed at the top of the report
+    show_samples : if True, also print 20 sample predictions
+
+    Returns:
+    dict with all metrics plus 'loss'
+    """
     Xb, Yb = _to_batch(X, Y)
     loss = ann.compute_loss(Xb, Yb)
 

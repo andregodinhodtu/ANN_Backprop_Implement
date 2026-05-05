@@ -443,19 +443,14 @@ class ANN_numpy():
         X_val   = np.asarray(X_val,   dtype=float)
         Y_val   = np.asarray(Y_val,   dtype=float)
 
-        # Promote 1D label arrays to 2D so .T behaves correctly
-        if Y_train.ndim == 1:
-            Y_train = Y_train.reshape(-1, 1)
-        if Y_val.ndim == 1:
-            Y_val = Y_val.reshape(-1, 1)
-
-        # --- Cross the boundary: data-world (rows = samples) → math-world (columns = samples) ---
+        # (rows = samples) -> (columns = samples) after transposing
         X_train = X_train.T          # (n_features, n_samples)
         Y_train = Y_train.T          # (n_output,   n_samples)
         X_val   = X_val.T
         Y_val   = Y_val.T
-
-        n_samples = X_train.shape[1]    # samples are along axis 1 now
+        
+         # samples are along axis 1 now
+        n_samples = X_train.shape[1]
 
         # --- Save hyperparameters for later (used by save_model) ---
         self.epochs = epochs
@@ -466,7 +461,7 @@ class ANN_numpy():
         self.l2_lambda = l2_lambda
         self.n_samples = n_samples
 
-        # --- Early stopping state ---
+        # Early stopping state
         best_val_loss = float('inf')
         best_weights = None
         best_epoch = 0
@@ -476,6 +471,7 @@ class ANN_numpy():
         current_lr = learning_rate
 
         for epoch in range(1, epochs + 1):
+            
             # LR decay
             if epoch > 1 and (epoch - 1) % decay_every == 0:
                 current_lr *= lr_decay
@@ -483,11 +479,13 @@ class ANN_numpy():
                     print(f"  [LR decayed to {current_lr:.6f}]")
 
             # Shuffle along the SAMPLE axis (axis 1, not axis 0)
+            # Run one epoch of mini-batch SGD
             indices = self.rng.permutation(n_samples)
-            X_shuffled = X_train[:, indices]        # reorder columns
+            # Reorder columns
+            X_shuffled = X_train[:, indices]
             Y_shuffled = Y_train[:, indices]
 
-            # Mini-batch loop — slice columns
+            # Mini-batch loop, slice columns
             for start in range(0, n_samples, batch_size):
                 end = min(start + batch_size, n_samples)
                 batch_X = X_shuffled[:, start:end]  # (n_features, B)
@@ -496,7 +494,7 @@ class ANN_numpy():
                 for layer in self.layers:
                     layer.update_parameters(current_lr, l2_lambda)
 
-            # Track losses for this epoch (full train + val pass, both math-world)
+            # Compute the loss on train and val and store them
             train_loss = self.compute_loss(X_train, Y_train)
             val_loss   = self.compute_loss(X_val, Y_val)
             history["train_loss"].append(train_loss)
@@ -520,7 +518,7 @@ class ANN_numpy():
                               f"(best was epoch {best_epoch}) ***")
                     break
 
-        # Restore best weights
+        # Restore best weights to layer variables
         if verbose:
             print(f"\nRestoring best weights from epoch {best_epoch} "
                   f"(val loss: {best_val_loss:.6f})")
@@ -528,8 +526,10 @@ class ANN_numpy():
 
         return history
 
-    def save_model(self, output_filename, data_name, path="../models"):
-        """Save model parameters in a consistent and replicable way."""
+    def save_model(self, output_filename, data_name, path):
+        """
+        Save model parameters in a consistent and replicable way.
+        """
 
         if not isinstance(output_filename, str):
             raise TypeError("output_filename must be a string")
@@ -541,7 +541,7 @@ class ANN_numpy():
         full_path = save_dir / output_filename
 
         with open(full_path, "w", encoding="utf-8") as file:
-            # --- Metadata ---
+            # Metadata
             file.write(f">Model: {output_filename}\n")
             file.write(f">Data used to train: {data_name}\n")
             file.write(f">Number of samples: {self.n_samples}\n")
@@ -552,7 +552,7 @@ class ANN_numpy():
             file.write(f">Decay every: {self.decay_every}\n")
             file.write(f">L2 lambda: {self.l2_lambda}\n")
 
-            # --- Architecture ---
+            # Architecture
             arch_str = ",".join(str(n) for n in self.n_neurons_each_layer)
             file.write(f">N layers: {self.n_layers}\n")
             file.write(f">Architecture: {arch_str}\n")
@@ -560,7 +560,7 @@ class ANN_numpy():
             file.write(f">Activation output: {self.activation_output}\n")
             file.write(f">Loss function: {self.loss_function}\n")
 
-            # --- Parameters per layer ---
+            # Parameters per layer
             for i, layer in enumerate(self.layers):
                 n_out, n_in = layer.weights.shape
 
@@ -576,11 +576,14 @@ class ANN_numpy():
 
     @classmethod
     def load_model(cls, filepath):
-        """Reconstruct an ANN from a saved model file."""
+        """
+        Reconstruct an ANN from a saved model file.
+        """
         with open(filepath, "r", encoding="utf-8") as file:
+            # read file into memory
             lines = [line.rstrip("\n") for line in file]
 
-        # --- First pass: parse header lines into a dict ---
+        # First pass: parse header lines into a dict
         headers = {}
         data_lines = []
         for line in lines:
@@ -589,7 +592,7 @@ class ANN_numpy():
                 headers[key.strip()] = value.strip()
             data_lines.append(line)
 
-        # --- Build the model from architecture info ---
+        # Build the model from architecture info
         architecture = [int(n) for n in headers["Architecture"].split(",")]
         ann = cls(
             n_layers=int(headers["N layers"]),
@@ -599,14 +602,14 @@ class ANN_numpy():
             loss_function=headers["Loss function"],
         )
 
-        # --- Second pass: walk through lines and load weights/biases ---
+        # Second pass: walk through lines and load weights/biases
         i = 0
         layer_idx = 0
         while i < len(data_lines):
             line = data_lines[i]
 
             if line.startswith(">Layer") and "weights" in line:
-                # ">Layer 0 weights: 32x27"
+                # Example ">Layer 0 weights: 32x27"
                 shape_str = line.split(":")[1].strip()
                 n_out, n_in = (int(x) for x in shape_str.split("x"))
 
@@ -615,7 +618,8 @@ class ANN_numpy():
                 for j in range(n_out):
                     row = [float(v) for v in data_lines[i + 1 + j].split()]
                     rows.append(row)
-                ann.layers[layer_idx].weights = np.array(rows)             # (n_out, n_in)
+                # writing weight matrixes
+                ann.layers[layer_idx].weights = np.array(rows) # (n_out, n_in)
                 i += 1 + n_out
 
             elif line.startswith(">Layer") and "biases" in line:
@@ -623,6 +627,7 @@ class ANN_numpy():
                 n_out, _ = (int(x) for x in shape_str.split("x"))
 
                 values = [float(data_lines[i + 1 + j]) for j in range(n_out)]
+                # writing bias vectors
                 ann.layers[layer_idx].biases = np.array(values).reshape(-1, 1)   # (n_out, 1)
                 i += 1 + n_out
                 layer_idx += 1

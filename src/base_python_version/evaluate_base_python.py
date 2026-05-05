@@ -1,6 +1,5 @@
 """
-evaluate.py
------------
+evaluate_base_python.py
 Evaluation utilities for a trained binary-classification ANN.
 
 Quick reference of what's here:
@@ -12,19 +11,10 @@ Quick reference of what's here:
 
   Printing helpers
     print_confusion_matrix
-    print_sample_predictions
 
   High-level reports (what you'll usually call)
     report_results          - quick post-training summary on train + val
     evaluate                - full report on one dataset
-
-All functions take a trained ANN object that exposes:
-    ann.prediction(x)       -> [[float]]   (column vector, single output)
-    ann.compute_loss(X, Y)  -> float       (mean loss over a dataset)
-
-Inputs X, Y are lists of column vectors:
-    X = [[[v1], [v2], ..., [vN]], ...]
-    Y = [[[label]], ...]                   # label is 0 or 1
 """
 
 def accuracy(ann, X, Y, threshold=0.5):
@@ -62,7 +52,6 @@ def classification_metrics(ann, X, Y, threshold=0.5):
     Compute a full set of classification metrics.
 
     Returns:
-    --------
     dict with keys:
         accuracy    - overall fraction correct
         precision   - of predicted positives, how many were correct
@@ -92,7 +81,9 @@ def classification_metrics(ann, X, Y, threshold=0.5):
     }
 
 def print_confusion_matrix(ann, X, Y, threshold=0.5):
-    """Print a nicely formatted confusion matrix."""
+    """
+    Print a nicely formatted confusion matrix.
+    """
     cm = confusion_matrix(ann, X, Y, threshold)
     tn, fp, fn, tp = cm["tn"], cm["fp"], cm["fn"], cm["tp"]
 
@@ -122,7 +113,6 @@ def evaluate(ann, X, Y, threshold = 0.5, name="Dataset"):
     Prints loss, headline metrics, and confusion matrix.
 
     Parameters:
-    -----------
     ann          : trained ANN
     X, Y         : data and labels
     threshold    : decision threshold for converting probability -> class
@@ -130,7 +120,6 @@ def evaluate(ann, X, Y, threshold = 0.5, name="Dataset"):
     show_samples : if True, also print 20 sample predictions
 
     Returns:
-    --------
     dict with all metrics plus 'loss'
     """
     loss = ann.compute_loss(X, Y)

@@ -168,7 +168,7 @@ class ANN_Layer_base_python():
         if self.activation_function in ("relu", "leaky_relu"):
             # He initialization
             std = math.sqrt(2 / self.n_neurons_input)
-        else:c
+        else:
             # Xavier / Glorot initialization
             std = math.sqrt(2 / (self.n_neurons_input + self.n_neurons_output))
 

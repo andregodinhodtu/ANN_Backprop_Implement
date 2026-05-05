@@ -1,33 +1,17 @@
-import random
 
-# INPUT for stohastic backpropagation
+"""
+data_input_base_python.py
+Parsing input test validation and train data into list structures
 
-# iterator
-def load_and_split(filename, batch_size):
+Quick reference of what's here:
 
-    """ Each iteration returns 2 lists - inputs and labels - of {batch_size} samples.
-    Iteration continues until the end of file.
-    
-    Each call of load_and_split() will produce different batches due to random shuffling.
-    """
+    parse_input             - reads filename and processes it into lists
+    iterate_input           - internal iterator used by parse_input
+    parse_line              - format one line in input
 
-    # load entire file
-    inputs, labels = parse_input(filename)
+    make_training_set       - helper function to build the training dataset
+"""
 
-    # zip together + shuffle randomly (no seed, so it is different for each epoch)
-    data = list(zip(inputs, labels))
-    random.shuffle(data)
-
-    # split into batches
-    for i in range(0, len(data), batch_size):
-        batch = data[i:i+batch_size]
-        # zip the tuples into 2 tuples
-        # convert them to lists
-        input_batch, labels_batch = map(list, zip(*batch))
-        
-        yield input_batch, labels_batch
-
-# INPUT PREPARATION by subsets
 
 def parse_input(filename, start=None, end=None):
 
@@ -51,7 +35,6 @@ def parse_input(filename, start=None, end=None):
         label_list.append(label)
 
     return input_list, label_list
-
 
 def iterate_input(filename, start=None, end=None):
 
@@ -97,10 +80,12 @@ def parse_line(line):
 
     return value, label
 
-
 # make a file of all training data (discarded, one-use)
 
 def make_training_set():
+    """
+    Function that mmakes the full training set for our model
+    """
     outfilename = "data/training_set.howlin"
     with open(outfilename, 'w') as outfile:
 

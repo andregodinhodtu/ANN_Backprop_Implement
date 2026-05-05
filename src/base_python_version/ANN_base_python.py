@@ -375,7 +375,6 @@ class ANN_base_python():
         Uses the network's own RNG (self.rng, seeded in __init__) for shuffling.
 
         Parameters:
-        -----------
         X_train, Y_train : training data (lists of column vectors)
         X_val, Y_val     : validation data (lists of column vectors)
         epochs           : maximum number of epochs
@@ -388,11 +387,10 @@ class ANN_base_python():
         verbose          : print per-epoch progress
 
         Returns:
-        --------
         history : dict with 'train_loss' and 'val_loss' lists per epoch
         """
 
-        # --- Save hyperparameters for later (used by save_model) ---
+        # Save hyperparameters for later (used by save_model)
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.batch_size = batch_size
@@ -401,7 +399,7 @@ class ANN_base_python():
         self.l2_lambda = l2_lambda
         self.n_samples = len(X_train)
 
-        # --- Early stopping state ---
+        # Early stopping state
         best_val_loss = float('inf')
         best_weights = None
         best_epoch = 0
@@ -432,8 +430,7 @@ class ANN_base_python():
                     layer.update_parameters(current_lr, l2_lambda)
 
             # Track losses for this epoch
-            
-            # We could maybe accumulate train_loss from the first pass
+            # Compute the loss on train and val and store them
             train_loss = self.compute_loss(X_train, Y_train)
             val_loss   = self.compute_loss(X_val, Y_val)
             history["train_loss"].append(train_loss)
@@ -465,8 +462,10 @@ class ANN_base_python():
 
         return history
         
-    def save_model(self, output_filename, data_name, path="../models"):
-        """Save model parameters in a consistent and replicable way."""
+    def save_model(self, output_filename, data_name, path):
+        """
+        Save model parameters in a consistent and replicable way.
+        """
 
         if not isinstance(output_filename, str):
             raise TypeError("output_filename must be a string")
@@ -478,7 +477,7 @@ class ANN_base_python():
         full_path = save_dir / output_filename
 
         with open(full_path, "w", encoding="utf-8") as file:
-            # --- Metadata ---
+            # Metadata
             file.write(f">Model: {output_filename}\n")
             file.write(f">Data used to train: {data_name}\n")
             file.write(f">Number of samples: {self.n_samples}\n")
@@ -489,7 +488,7 @@ class ANN_base_python():
             file.write(f">Decay every: {self.decay_every}\n")
             file.write(f">L2 lambda: {self.l2_lambda}\n")
 
-            # --- Architecture ---
+            # Architecture
             arch_str = ",".join(str(n) for n in self.n_neurons_each_layer)
             file.write(f">N layers: {self.n_layers}\n")
             file.write(f">Architecture: {arch_str}\n")
@@ -497,7 +496,7 @@ class ANN_base_python():
             file.write(f">Activation output: {self.activation_output}\n")
             file.write(f">Loss function: {self.loss_function}\n")
 
-            # --- Parameters per layer ---
+            # Parameters per layer
             for i, layer in enumerate(self.layers):
                 n_out = len(layer.weights)
                 n_in  = len(layer.weights[0])
@@ -514,11 +513,13 @@ class ANN_base_python():
 
     @classmethod
     def load_model(cls, filepath):
-        """Reconstruct an ANN from a saved model file."""
+        """
+        Reconstruct an ANN from a saved model file.
+        """
         with open(filepath, "r", encoding="utf-8") as file:
             lines = [line.rstrip("\n") for line in file]
 
-        # --- First pass: parse header lines into a dict ---
+        # First pass: parse header lines into a dict
         headers = {}
         data_lines = []
         for line in lines:
@@ -527,7 +528,7 @@ class ANN_base_python():
                 headers[key.strip()] = value.strip()
             data_lines.append(line)
 
-        # --- Build the model from architecture info ---
+        # Build the model from architecture info
         architecture = [int(n) for n in headers["Architecture"].split(",")]
         ann = cls(
             n_layers=int(headers["N layers"]),
@@ -537,14 +538,14 @@ class ANN_base_python():
             loss_function=headers["Loss function"],
         )
 
-        # --- Second pass: walk through lines and load weights/biases ---
+        # Second pass: walk through lines and load weights/biases
         i = 0
         layer_idx = 0
         while i < len(data_lines):
             line = data_lines[i]
 
             if line.startswith(">Layer") and "weights" in line:
-                # ">Layer 0 weights: 32x27"
+                # Example ">Layer 0 weights: 32x27"
                 shape_str = line.split(":")[1].strip()
                 n_out, n_in = (int(x) for x in shape_str.split("x"))
 
@@ -553,7 +554,8 @@ class ANN_base_python():
                 for j in range(n_out):
                     row = [float(v) for v in data_lines[i + 1 + j].split()]
                     rows.append(row)
-                ann.layers[layer_idx].weights = rows                       # list of lists
+                # Appending the weights to ann
+                ann.layers[layer_idx].weights = rows  # list of lists
                 i += 1 + n_out
 
             elif line.startswith(">Layer") and "biases" in line:
@@ -561,7 +563,8 @@ class ANN_base_python():
                 n_out, _ = (int(x) for x in shape_str.split("x"))
 
                 biases = [[float(data_lines[i + 1 + j])] for j in range(n_out)]
-                ann.layers[layer_idx].biases = biases                      # list of single-element lists
+                 # Appending the biases to ann
+                ann.layers[layer_idx].biases = biases   # list of single-element lists
                 i += 1 + n_out
                 layer_idx += 1
 
