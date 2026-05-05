@@ -41,7 +41,7 @@ pip install -r requirements.txt
  
 ## Usage
  
-...
+Check our report!
  
 ## Implementation Notes
  
