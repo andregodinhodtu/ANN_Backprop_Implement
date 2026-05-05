@@ -5,7 +5,7 @@ from ANN_layer_numpy import ANN_Layer_numpy
 class ANN_numpy():
 
     """ANN algorithm with backpropagation made specifically for binary classification.
-    This version utilizes NumPy for maximum efficiency and clarity. """
+    This version utilizes NumPy for maximum efficiency and clarity."""
 
     LOSS_FUNCTIONS = {
         "mse": {
@@ -29,7 +29,6 @@ class ANN_numpy():
         """
         Build a feedforward neural network with n_layers.
         Parameters:
-        -----------
         n_layers : int
             Number of layers (including output).
         n_neurons_each_layer : list of ints
@@ -40,8 +39,8 @@ class ANN_numpy():
             Activation function for the output layer.
         loss_function : str
             Loss function to use.
-        seed : int or None, optional
-            Random seed for reproducible weight initialization.
+        seed : np.rng or  None, optional
+            np.random.default_rng for reproducible weight initialization.
             If None, randomness is non-deterministic.
         """
         # Input validation
@@ -82,8 +81,7 @@ class ANN_numpy():
         self.loss_function = loss_function
         self.rng = rng
 
-        # Dedicated RNG so this network's randomness is isolated from
-        # the global random state (good practice).
+        # Option to have dedicated RNG so this network's randomness
         if self.rng is None:
             self.rng = np.random.default_rng()
 
@@ -91,11 +89,17 @@ class ANN_numpy():
         self.layers = []
 
         # Build layers
+        # In initialization network is built
         self._build_ANN()
         
     def _build_ANN(self):
-        """Private method to construct the layers of the network with Numpy-based ANN Layer."""
+        """
+        Private method to construct the layers of 
+        the network with Numpy-based ANN Layer.
+        Called in __init__
+        """
         
+        # Creating each layer at a time
         for i in range(self.n_layers -1):
             # Number of inputs for this layer
             n_input = self.n_neurons_each_layer[i]
@@ -127,25 +131,23 @@ class ANN_numpy():
         shape simply propagates through each layer.
 
         Parameters:
-        -----------
         input_vector : np.ndarray
             Input to the network. Must be a 2D array with shape:
               - (n_features, 1)             → single sample as column vector
               - (n_features, batch_size)    → batch of samples as column vectors
 
         Returns:
-        --------
         np.ndarray
             Network output, shape (n_output, batch_size). For a single sample,
             batch_size is 1, so the shape is (n_output, 1).
         """
-        # --- Type check ---
+        # Type check
         if not isinstance(input_vector, np.ndarray):
             raise TypeError("input_vector must be a numpy.ndarray")
         if not np.issubdtype(input_vector.dtype, np.number):
             raise TypeError("input_vector must contain numeric values")
 
-        # --- Shape checks ---
+        # Shape checks
         if input_vector.ndim != 2:
             raise ValueError(
                 f"input_vector must be 2D with shape (n_features, batch_size); "
@@ -154,7 +156,7 @@ class ANN_numpy():
         if input_vector.shape[1] == 0:
             raise ValueError("input_vector has 0 samples (batch_size must be >= 1).")
 
-        # --- Dimension check against network's expected input size ---
+        # Dimension check against network's expected input size
         expected = self.n_neurons_each_layer[0]
         if input_vector.shape[0] != expected:
             raise ValueError(
@@ -163,7 +165,7 @@ class ANN_numpy():
                 f"If your batch is shaped (batch_size, n_features), transpose with .T"
             )
 
-        # --- Forward pass through all layers ---
+        # Forward pass through all layers
         x = input_vector
         for layer in self.layers:
             # Use the layer's __call__ to do forward pass and activation
@@ -177,7 +179,6 @@ class ANN_numpy():
         Stores them in each layer's `.delta` attribute.
 
         Parameters:
-        -----------
         y : np.ndarray, shape (n_output, batch_size)
             Target output, in the same 2D layout as predictions.
             For a single sample, batch_size is 1.
@@ -193,7 +194,7 @@ class ANN_numpy():
                 f"y has {y.shape[0]} elements along axis 0, expected {expected}."
             )
 
-        # --- Output layer delta ---
+        # Output layer delta
         output_layer = self.layers[-1]
         output_layer.compute_activation_derivatives()
         # (n_out, batch_size)
@@ -202,7 +203,8 @@ class ANN_numpy():
         loss_deriv = self.LOSS_FUNCTIONS[self.loss_function]["deriv"]
         output_layer.delta = loss_deriv(y, a) * output_layer.activation_derivatives
 
-        # --- Hidden layer deltas (backward loop) ---
+        # Hidden layer deltas (backward loop)
+        # Taking out the output layer from loop
         for i in range(len(self.layers) - 2, -1, -1):
             layer = self.layers[i]
             next_layer = self.layers[i + 1]
@@ -220,6 +222,8 @@ class ANN_numpy():
 
     def _restore_parameters_snapshot(self, saved):
         """Restore a previously saved weights/biases snapshot."""
+        
+        # assigning the saved to weigths and biases
         weights, biases = saved
         for layer, w, b in zip(self.layers, weights, biases):
             layer.weights = w.copy()
@@ -227,14 +231,16 @@ class ANN_numpy():
     
     def compute_gradients_sample(self, input_vector, target):
         """
-        Compute gradients for a single training sample.
+        Compute gradients (dweights, dbiases) for a single training sample.
+        The function is not being used. We let it stay as a way to compare
+        both implementations.
 
         Parameters:
-        -----------
         input_vector : np.ndarray, shape (n_input, 1)
         target       : np.ndarray, shape (n_output, 1)
         """
-        # --- Type checks ---
+        
+        # Type checks
         if not isinstance(input_vector, np.ndarray):
             raise TypeError("input_vector must be a numpy.ndarray")
         if not isinstance(target, np.ndarray):
@@ -244,7 +250,7 @@ class ANN_numpy():
         if not np.issubdtype(target.dtype, np.number):
             raise TypeError("target must contain numeric values")
 
-        # --- Shape checks (must be a single column vector) ---
+        # Shape checks (must be a single column vector)
         expected_in  = self.n_neurons_each_layer[0]
         expected_out = self.layers[-1].n_neurons_output
         if input_vector.shape != (expected_in, 1):
@@ -278,11 +284,8 @@ class ANN_numpy():
         -----------
         batch_inputs  : np.ndarray, shape (n_input,  batch_size)
         batch_targets : np.ndarray, shape (n_output, batch_size)
-            Both arrays must use the "math world" layout where columns are samples.
-            If your data is in (n_samples, n_features) row-layout, transpose with .T
-            before calling.
         """
-        # --- Type checks ---
+        # Type checks
         if not isinstance(batch_inputs, np.ndarray):
             raise TypeError("batch_inputs must be a numpy.ndarray")
         if not isinstance(batch_targets, np.ndarray):
@@ -292,7 +295,7 @@ class ANN_numpy():
         if not np.issubdtype(batch_targets.dtype, np.number):
             raise TypeError("batch_targets must contain numeric values")
 
-        # --- Shape checks ---
+        # Shape checks
         if batch_inputs.ndim != 2:
             raise ValueError(
                 f"batch_inputs must be 2D with shape (n_input, batch_size); "
@@ -304,7 +307,7 @@ class ANN_numpy():
                 f"got {batch_targets.ndim}D shape {batch_targets.shape}."
             )
 
-        # --- Batch size consistency ---
+        # Batch size consistency
         if batch_inputs.shape[1] != batch_targets.shape[1]:
             raise ValueError(
                 f"batch_inputs has {batch_inputs.shape[1]} samples (axis 1), "
@@ -314,7 +317,7 @@ class ANN_numpy():
         if batch_size == 0:
             raise ValueError("Batch is empty; nothing to compute.")
 
-        # --- Dimension checks against network's expected sizes ---
+        # Dimension checks against network's expected sizes
         expected_in  = self.n_neurons_each_layer[0]
         expected_out = self.layers[-1].n_neurons_output
         if batch_inputs.shape[0] != expected_in:
@@ -328,13 +331,13 @@ class ANN_numpy():
                 f"but the network expects {expected_out}."
             )
 
-        # --- Forward pass over entire batch ---
+        # Forward pass over entire batch
         self.prediction(batch_inputs)
 
-        # --- Backward pass over entire batch ---
+        # Backward pass over entire batch
         self._compute_deltas(batch_targets)
 
-        # --- Per-parameter gradients, averaged over the batch ---
+        # Per-parameter gradients, averaged over the batch
         for i, layer in enumerate(self.layers):
             prev_a = batch_inputs if i == 0 else self.layers[i - 1].a_s
 
@@ -356,7 +359,7 @@ class ANN_numpy():
         float
             Mean loss across the batch (averaged over samples and output neurons).
         """
-        # --- Type checks ---
+        # Type checks
         if not isinstance(X, np.ndarray):
             raise TypeError("X must be a numpy.ndarray")
         if not isinstance(Y, np.ndarray):
@@ -366,7 +369,7 @@ class ANN_numpy():
         if not np.issubdtype(Y.dtype, np.number):
             raise TypeError("Y must contain numeric values")
 
-        # --- Shape checks ---
+        # Shape checks
         if X.ndim != 2:
             raise ValueError(
                 f"X must be 2D with shape (n_features, n_samples); "
@@ -382,7 +385,7 @@ class ANN_numpy():
                 f"X has {X.shape[1]} samples (axis 1), Y has {Y.shape[1]}. They must match."
             )
 
-        # --- Dimension checks against network's expected sizes ---
+        # Dimension checks against network's expected sizes
         expected_in  = self.n_neurons_each_layer[0]
         expected_out = self.layers[-1].n_neurons_output
         if X.shape[0] != expected_in:
@@ -396,7 +399,7 @@ class ANN_numpy():
                 f"but the network expects {expected_out}."
             )
 
-        # --- Forward pass + per-element loss + mean ---
+        # Forward pass + per-element loss + mean
         Y_pred = self.prediction(X)
         loss_func = self.LOSS_FUNCTIONS[self.loss_function]["func"]
         return float(np.mean(loss_func(Y, Y_pred)))
@@ -418,7 +421,7 @@ class ANN_numpy():
         Parameters:
         -----------
         X_train, Y_train : np.ndarray
-            Training data in DATA-WORLD layout (rows = samples).
+            Training data  (rows = samples).
             X_train shape: (n_samples, n_features)
             Y_train shape: (n_samples, n_output) or (n_samples,) for single-output targets
         X_val, Y_val     : same layout, validation set
@@ -440,7 +443,7 @@ class ANN_numpy():
         X_val   = np.asarray(X_val,   dtype=float)
         Y_val   = np.asarray(Y_val,   dtype=float)
 
-        # --- Promote 1D label arrays to 2D so .T behaves correctly ---
+        # Promote 1D label arrays to 2D so .T behaves correctly
         if Y_train.ndim == 1:
             Y_train = Y_train.reshape(-1, 1)
         if Y_val.ndim == 1:

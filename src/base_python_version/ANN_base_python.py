@@ -6,13 +6,15 @@ from ANN_layer_base_python import ANN_Layer_base_python
 
 class ANN_base_python():
     
+    """ANN algorithm with backpropagation made specifically for binary classification.
+    This version makes use of nested list structures from Core python."""
+    
     LOSS_FUNCTIONS = {
         "mse": {
             "func":  lambda y_true, y_pred: (y_pred - y_true) ** 2,
             "deriv": lambda y_true, y_pred: 2 * (y_pred - y_true),
         },
         "binarycrossentropy": {
-            # Per-neuron formula. Both args are scalars.
             "func":  lambda y_true, y_pred: -(
                 y_true * math.log(max(y_pred, 1e-15)) +
                 (1 - y_true) * math.log(max(1 - y_pred, 1e-15))
@@ -38,8 +40,8 @@ class ANN_base_python():
             Activation function for the output layer.
         loss_function : str
             Loss function to use.
-        seed : int or None, optional
-            Random seed for reproducible weight initialization.
+        seed : rng or None, optional
+            random.Random for reproducible weight initialization.
             If None, randomness is non-deterministic.
         """
         # Input validation
@@ -80,8 +82,7 @@ class ANN_base_python():
         self.loss_function = loss_function
         self.rng = rng
         
-        # Dedicated RNG so this network's randomness is isolated from
-        # the global random state (good practice).
+        # Option to have dedicated RNG so this network's randomness
         if self.rng is None:
             self.rng = random.Random()
         
@@ -89,11 +90,17 @@ class ANN_base_python():
         self.layers = []
         
         # Build layers
+        # In initialization network is built
         self._build_ANN()
         
     def _build_ANN(self):
-        """Private method to construct the layers of the network."""
+        """
+        Private method to construct the layers of 
+        the network with Numpy-based ANN Layer.
+        Called in __init__
+        """
         
+        # Creating each layer at a time
         for i in range(self.n_layers -1):
             # Number of inputs for this layer
             n_input = self.n_neurons_each_layer[i]
@@ -110,7 +117,7 @@ class ANN_base_python():
                 activation_function=act
             )
             
-            # Initialize weights and biases
+            # Initialize weights and biases (optional fixed seed)
             layer.initialize_weights_bias(self.rng)
             
             # Add to layers list
@@ -121,17 +128,15 @@ class ANN_base_python():
         Make a forward pass through the entire ANN for a single sample.
 
         Parameters:
-        -----------
         input_vector : list of lists
             Input column vector, shape (n_input, 1).
             Must be a list of single-element lists, e.g. [[0.5], [0.2], [0.9]].
 
         Returns:
-        --------
         list of lists
             Output of the last layer after activation, shape (n_output, 1).
         """
-        # --- Type checks ---
+        # Type checks
         if not isinstance(input_vector, list):
             raise TypeError("input_vector must be a list of lists")
         if not all(isinstance(row, list) for row in input_vector):
@@ -139,13 +144,13 @@ class ANN_base_python():
         if not all(isinstance(val, (int, float)) for row in input_vector for val in row):
             raise TypeError("All values in input_vector must be ints or floats")
 
-        # --- Value checks ---
+        # Value checks
         if len(input_vector) == 0:
             raise ValueError("input_vector cannot be empty")
         if any(len(row) != 1 for row in input_vector):
             raise ValueError("Each row in input_vector must contain exactly 1 element")
 
-        # --- Dimension check against network's expected input size ---
+        # Dimension check against network's expected input size
         expected = self.n_neurons_each_layer[0]
         if len(input_vector) != expected:
             raise ValueError(
@@ -153,7 +158,7 @@ class ANN_base_python():
                 f"but the network expects {expected}."
             )
 
-        # --- Forward pass through all layers ---
+        # Forward pass through all layers
         working_vector = input_vector
         for layer in self.layers:
             # Use the layer's __call__ to do forward pass and activation
@@ -167,7 +172,6 @@ class ANN_base_python():
         Stores them in each layer's `.delta` attribute.
 
         Parameters:
-        -----------
         y : list of lists
             Target output column vector (shape: n_output x 1).
         """
@@ -186,7 +190,7 @@ class ANN_base_python():
 
             is_output = (i == len(self.layers) - 1)
 
-            # === Special case: BCE + sigmoid output ===
+            # Special case: BCE + sigmoid output
             # The gradient (a - y)/(a*(1-a)) * a*(1-a) simplifies to (a - y).
             # Compute this directly to avoid catastrophic cancellation.
             if is_output and self.loss_function == "binarycrossentropy" \
@@ -194,9 +198,10 @@ class ANN_base_python():
                 for j in range(layer.n_neurons_output):
                     delta = layer.a_s[j][0] - y[j][0]
                     layer.delta.append(delta)
-                continue   # skip the generic path for this layer
+                # skip the generic path for this layer
+                continue
 
-            # === Generic path ===
+            # Generic path
             loss_deriv = self.LOSS_FUNCTIONS[self.loss_function]["deriv"]
 
             for j in range(layer.n_neurons_output):
@@ -204,16 +209,21 @@ class ANN_base_python():
                     upstream = loss_deriv(y[j][0], layer.a_s[j][0])
                 else:
                     next_layer = self.layers[i + 1]
+                    # averged sum with weights between layers and
+                    # previous layers
                     upstream = sum(
                         next_layer.delta[k] * next_layer.weights[k][j]
                         for k in range(next_layer.n_neurons_output)
                     )
-
+                
+                # to get delta just multiply by the activations
                 delta = upstream * layer.activation_derivatives[j]
                 layer.delta.append(delta)
     
     def _save_parameters_snapshot(self):
-        """Deep-copy current weights and biases of all layers."""
+        """
+        Deep-copy current weights and biases of all layers.
+        """
         return [(
             [row[:] for row in layer.weights],
             [row[:] for row in layer.biases]
@@ -221,6 +231,8 @@ class ANN_base_python():
 
     def _restore_parameters_snapshot(self, saved):
         """Restore a previously saved weights/biases snapshot."""
+        
+        # assigning the saved to weigths and biases
         for layer, (w, b) in zip(self.layers, saved):
             layer.weights = [row[:] for row in w]
             layer.biases  = [row[:] for row in b]
@@ -230,7 +242,6 @@ class ANN_base_python():
         Compute gradients (dweights, dbiases) for a single training sample.
 
         Parameters:
-        -----------
         input_vector : list of lists
             Input column vector (shape: n_input x 1).
         target : list of lists
@@ -244,6 +255,7 @@ class ANN_base_python():
 
         # Compute per-parameter gradients
         for i, layer in enumerate(self.layers):
+            
             # Activations entering this layer
             prev_activations = input_vector if i == 0 else self.layers[i - 1].a_s
 
@@ -271,13 +283,12 @@ class ANN_base_python():
         ready to be consumed by `update_parameters`.
 
         Parameters:
-        -----------
         batch_inputs : list of (list of lists)
             Mini-batch of input column vectors, each of shape (n_input, 1).
         batch_targets : list of (list of lists)
             Mini-batch of target column vectors, each of shape (n_output, 1).
         """
-        # --- Input checks ---
+        # Input checks
         if len(batch_inputs) != len(batch_targets):
             raise ValueError(
                 f"batch_inputs has {len(batch_inputs)} elements, "
@@ -287,18 +298,18 @@ class ANN_base_python():
         if batch_size == 0:
             raise ValueError("Batch is empty; nothing to compute.")
 
-        # --- 1. Initialize zero accumulators (column-vector format throughout) ---
+        # 1. Initialize zero accumulators (column-vector format throughout)
         accum_dweights = [
-            [[0.0 for _ in range(layer.n_neurons_input)]
-             for _ in range(layer.n_neurons_output)]
+            [[0.0 for i in range(layer.n_neurons_input)]
+             for j in range(layer.n_neurons_output)]
             for layer in self.layers
         ]
         accum_dbiases = [
-            [[0.0] for _ in range(layer.n_neurons_output)]
+            [[0.0] for i in range(layer.n_neurons_output)]
             for layer in self.layers
         ]
 
-        # --- 2. Accumulate per-sample gradients ---
+        # 2. Accumulate per-sample gradients
         for x, y in zip(batch_inputs, batch_targets):
             self.compute_gradients_sample(x, y)
 
@@ -308,7 +319,7 @@ class ANN_base_python():
                         accum_dweights[i][j][k] += layer.dweights[j][k]
                     accum_dbiases[i][j][0] += layer.dbiases[j][0]  
                     
-        # --- 3. Average and store on each layer ---
+        # 3. Average and store on each layer
         for i, layer in enumerate(self.layers):
             layer.dweights = [
                 [accum_dweights[i][j][k] / batch_size
@@ -325,14 +336,12 @@ class ANN_base_python():
         Compute the mean loss across a batch of samples.
 
         Parameters:
-        -----------
         X : list of (list of lists)
             Batch of input column vectors.
         Y : list of (list of lists)
             Batch of target column vectors, shape (n_output, 1) each.
 
         Returns:
-        --------
         float
             Mean loss across the batch (averaged over samples and output neurons).
         """
@@ -340,7 +349,8 @@ class ANN_base_python():
 
         total_loss = 0.0
         for x, y in zip(X, Y):
-            y_pred = self.prediction(x)              # column vector (n_output, 1)
+            # column vector (n_output, 1)
+            y_pred = self.prediction(x)
             n = len(y)
             # Mean per-neuron loss for this sample
             sample_loss = sum(
