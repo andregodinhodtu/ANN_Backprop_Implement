@@ -1,0 +1,41 @@
+# This file may be used to create an environment using:
+# $ conda create --name <env> --file <this file>
+# platform: osx-arm64
+# created-by: conda 25.7.0
+_openmp_mutex=4.5=7_kmp_llvm
+bzip2=1.0.8=hd037594_9
+ca-certificates=2026.4.22=hbd8a1cb_0
+colorama=0.4.6=pyhd8ed1ab_1
+exceptiongroup=1.3.1=pyhd8ed1ab_0
+fasta=0.1.0=pypi_0
+iniconfig=2.3.0=pyhd8ed1ab_0
+libblas=3.11.0=6_h51639a9_openblas
+libcblas=3.11.0=6_hb0561ab_openblas
+libcxx=22.1.4=h55c6f16_0
+libexpat=2.7.5=hf6b4638_0
+libffi=3.5.2=hcf2aa1b_0
+libgcc=15.2.0=hcbb3090_18
+libgfortran=15.2.0=h07b0088_18
+libgfortran5=15.2.0=hdae7583_18
+liblapack=3.11.0=6_hd9741b5_openblas
+liblzma=5.8.3=h8088a28_0
+libopenblas=0.3.32=openmp_he657e61_0
+libsqlite=3.53.0=h1b79a29_0
+libzlib=1.3.2=h8088a28_2
+llvm-openmp=22.1.4=hc7d1edf_0
+ncurses=6.5=h5e97a16_3
+numpy=2.2.0=py311h4b914e2_0
+openssl=3.6.2=hd24854e_0
+packaging=26.1=pyhc364b38_0
+pip=26.0.1=pyh8b19718_0
+pluggy=1.6.0=pyhf9edf01_1
+pytest=8.1.2=pyhd8ed1ab_0
+python=3.11.15=h8561d8f_0_cpython
+python_abi=3.11=8_cp311
+readline=8.3=h46df422_0
+setuptools=82.0.1=pyh332efcf_0
+tk=8.6.13=h010d191_3
+tomli=2.4.1=pyhcf101f3_0
+typing_extensions=4.15.0=pyhcf101f3_0
+tzdata=2025c=hc9c84f9_1
+wheel=0.46.3=pyhd8ed1ab_0
