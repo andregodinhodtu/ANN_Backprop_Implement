@@ -1,6 +1,6 @@
 import random
 import math
-from pathlib import Path
+import os
 from ANN_layer_base_python import ANN_Layer_base_python
 
 
@@ -472,9 +472,9 @@ class ANN_base_python():
         if not isinstance(data_name, str):
             raise TypeError("data_name must be a string")
 
-        save_dir = Path(path)
-        save_dir.mkdir(parents=True, exist_ok=True)
-        full_path = save_dir / output_filename
+        save_dir = path
+        os.makedirs(save_dir, exist_ok=True)
+        full_path = os.path.join(save_dir, output_filename)
 
         with open(full_path, "w", encoding="utf-8") as file:
             # Metadata
@@ -509,7 +509,7 @@ class ANN_base_python():
                 for row in layer.biases:
                     file.write(f"{row[0]:.10f}\n")
 
-        print(f"Model saved to: {full_path.resolve()}")
+        print(f"Model saved to: {os.path.abspath(full_path)}")
 
     @classmethod
     def load_model(cls, filepath):
@@ -571,5 +571,5 @@ class ANN_base_python():
             else:
                 i += 1
 
-        print(f"Model loaded from: {Path(filepath).resolve()}")
+        print(f"Model loaded from: {os.path.abspath(filepath)}")
         return ann

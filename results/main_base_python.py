@@ -1,23 +1,23 @@
 import sys
 import random
 import math
-from pathlib import Path
 from datetime import datetime
 import time
+import os
 
 
 # ------------------------------ Paths and Imports ------------------------------
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
-SRC = PROJECT_ROOT / "src"
-SRC_BASE_PYTHON = SRC / "base_python_version"
-DATA_FOLDER = PROJECT_ROOT / "data"
-MODEL_FOLDER = PROJECT_ROOT / "models"
+SRC = os.path.join(PROJECT_ROOT, "src")
+SRC_BASE_PYTHON = os.path.join(SRC, "base_python_version")
+DATA_FOLDER = os.path.join(PROJECT_ROOT, "data")
+MODEL_FOLDER = os.path.join(PROJECT_ROOT, "models")
 
-sys.path.append(str(SRC_BASE_PYTHON))
-sys.path.append(str(SRC))
+sys.path.append(SRC_BASE_PYTHON)
+sys.path.append(SRC)
 
 from data_input_base_python import parse_input
 from ANN_layer_base_python import ANN_Layer_base_python
@@ -32,13 +32,13 @@ if __name__ == "__main__":
     # ------------------------------ Train settings ------------------------------
     
     # Data
-    TRAIN_DATA_FILE = DATA_FOLDER / "training_set.howlin"
-    assert TRAIN_DATA_FILE.exists(), f"Train data file not found at: {TRAIN_DATA_FILE}"
+    TRAIN_DATA_FILE = os.path.join(DATA_FOLDER, "training_set.howlin")
+    assert os.path.exists(TRAIN_DATA_FILE), f"Train data not found at: {TRAIN_DATA_FILE}"
 
     # Train settings 
     SEED          = 42
     TRAIN_RATIO   = 0.85
-    EPOCHS        = 200
+    EPOCHS        = 3
     LEARNING_RATE = 0.01
     BATCH_SIZE    = 32
     LR_DECAY      = 0.95
@@ -59,11 +59,11 @@ if __name__ == "__main__":
     # ------------------------------ Test settings ------------------------------
     
     # Data
-    TEST_DATA_FILE = DATA_FOLDER  / "homology_reduced_subset_4.howlin"
-    assert TEST_DATA_FILE.exists(), f"Test data not found at: {TEST_DATA_FILE}"
+    TEST_DATA_FILE = os.path.join(DATA_FOLDER, "homology_reduced_subset_4.howlin")
+    assert os.path.exists(TEST_DATA_FILE), f"Test data not found at: {TEST_DATA_FILE}"
     
     # Model used to test
-    MODEL_FILE = MODEL_FOLDER / "base_python_model_20260505_121602.txt"
+    MODEL_FILE = os.path.join(MODEL_FOLDER, "base_python_model_20260505_121602.txt")
 
       
     # ---------------------------- CL parsing options ---------------------------

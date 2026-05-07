@@ -1,24 +1,24 @@
 import numpy as np
 import sys
+import os
 import random
 import math
-from pathlib import Path
 from datetime import datetime
 import time
 
 # ------------------------------ Paths and Imports ------------------------------
 
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
-SRC = PROJECT_ROOT / "src"
-SRC_NUMPY = SRC / "numpy_version"
-DATA_FOLDER = PROJECT_ROOT / "data"
-MODEL_FOLDER = PROJECT_ROOT / "models"
+SRC = os.path.join(PROJECT_ROOT, "src")
+SRC_NUMPY = os.path.join(SRC, "numpy_version")
+DATA_FOLDER = os.path.join(PROJECT_ROOT, "data")
+MODEL_FOLDER = os.path.join(PROJECT_ROOT, "models")
 
-sys.path.append(str(SRC_NUMPY))
-sys.path.append(str(SRC))
+sys.path.append(SRC_NUMPY)
+sys.path.append(SRC)
 
 from data_input_numpy import parse_input
 from ANN_layer_numpy import ANN_Layer_numpy
@@ -32,8 +32,8 @@ if __name__ == "__main__":
     # ------------------------------ Train settings ------------------------------
     
     # Data
-    TRAIN_DATA_FILE = DATA_FOLDER / "training_set.howlin"
-    assert TRAIN_DATA_FILE.exists(), f"Train data file not found at: {TRAIN_DATA_FILE}"
+    TRAIN_DATA_FILE = os.path.join(DATA_FOLDER, "training_set.howlin")
+    assert os.path.exists(TRAIN_DATA_FILE), f"Train data not found at: {TRAIN_DATA_FILE}"
 
     # Train settings 
     SEED          = 42
@@ -59,11 +59,11 @@ if __name__ == "__main__":
     # ------------------------------ Test settings ------------------------------
     
     # Data
-    TEST_DATA_FILE = DATA_FOLDER  / "homology_reduced_subset_4.howlin"
-    assert TEST_DATA_FILE.exists(), f"Test data not found at: {TEST_DATA_FILE}"
+    TEST_DATA_FILE = os.path.join(DATA_FOLDER, "homology_reduced_subset_4.howlin")
+    assert os.path.exists(TEST_DATA_FILE), f"Test data not found at: {TEST_DATA_FILE}"
     
     # Model used to test
-    MODEL_FILE = MODEL_FOLDER / "numpy_model_20260505_121015.txt"
+    MODEL_FILE = os.path.join(MODEL_FOLDER, "numpy_model_20260505_121015.txt")
 
       
     # ---------------------------- CL parsing options ---------------------------
