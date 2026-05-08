@@ -29,14 +29,21 @@ ANN_Backprop_Implement/
 ```
  
 ## Requirements
- 
+
 - Python 3.10+
 - NumPy (for the NumPy implementation only)
 - pytest (for running tests)
-Install dependencies with:
- 
+
+Install dependencies with pip:
+
 ```bash
 pip install -r requirements.txt
+```
+
+Or create a conda environment from the requirements file:
+
+```bash
+conda create --name  --file requirements.txt
 ```
  
 ## Usage
